@@ -2,6 +2,7 @@
   <form class="myform" id="postingForm">
     <h1>Create a New Post</h1>
     <div id="errorContainer"></div>
+
     <input
       class="input"
       type="text"
@@ -9,11 +10,15 @@
       placeholder="Title"
       required
     />
-    <div class="categorie" id="categoriesContainer"></div>
+
+    <div class="categorie" id="categoriesContainer">
+      <!-- Categories will be dynamically populated -->
+    </div>
 
     <textarea
       name="content"
       placeholder="Write your content here..."
+      required
     ></textarea>
 
     <input type="file" id="file" name="file" accept="image/*" />

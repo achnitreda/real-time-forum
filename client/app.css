@@ -3,3 +3,82 @@
   padding: 0;
   box-sizing: border-box;
 }
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.logo:hover {
+  color: #007bff;
+}
+
+.rightBtns {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.rightBtns label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f8f9fa;
+  transition: background-color 0.3s ease;
+}
+
+.rightBtns label:hover {
+  background-color: #e9ecef;
+}
+
+.rightBtns i {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.postbtn {
+  display: none;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn1 {
+  background-color: transparent;
+  border: 1px solid #007bff;
+  color: #007bff;
+}
+
+.btn1:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn2 {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn2:hover {
+  background-color: #0056b3;
+}

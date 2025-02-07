@@ -2,6 +2,7 @@ package forum
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -22,6 +23,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
+	fmt.Println("email ->",email)
 	uname := strings.ToLower(strings.TrimSpace(r.FormValue("uname")))
 	password := r.FormValue("password")
 	firstName := r.FormValue("firstName")
@@ -83,8 +85,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 func RegisterValidation(email, uname, password, firstName, lastName, age, gender string) string {
 	// Email validation
-	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9.]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	if email == "" || !emailRegex.MatchString(email) {
+	// emailRegex := regexp.MustCompile(`^[a-zA-Z0-9.]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if email == "" {
+		fmt.Println("ssssss")
 		return "Please enter a valid email address"
 	}
 

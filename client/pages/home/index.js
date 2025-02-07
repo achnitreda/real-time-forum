@@ -180,16 +180,14 @@ function createPostElement(post, isLoggedIn) {
             <button class="action-btn ${post.UserInteraction === 1 ? 'liked-btn' : ''}"
                     data-id="${post.ID}"
                     data-action="like"
-                    data-type="post"
-                    ${!isLoggedIn ? 'disabled' : ''}>
+                    data-type="post">
                 <i class="fas fa-thumbs-up"></i>
                 <span id="like_post-${post.ID}">${post.Likes}</span>
             </button>
             <button class="action-btn ${post.UserInteraction === -1 ? 'liked-btn' : ''}"
                     data-id="${post.ID}"
                     data-action="dislike"
-                    data-type="post"
-                    ${!isLoggedIn ? 'disabled' : ''}>
+                    data-type="post">
                 <i class="fas fa-thumbs-down"></i>
                 <span id="dislike_post-${post.ID}">${post.Dislikes}</span>
             </button>

@@ -31,6 +31,9 @@ export async function loadCommentPage(container) {
         // 4. Initialize infinite scroll
         initializeInfiniteScroll();
 
+        // 5 like/dislike functionality
+        initializeLikeDislike();
+
     } catch (error) {
         console.error('Error loading comment page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
@@ -97,6 +100,7 @@ function renderComments(comments, append = false) {
 }
 
 function createCommentElement(comment) {
+    console.log("comment =>", comment)
     const div = document.createElement('div');
     div.className = 'comment';
     div.innerHTML = `
@@ -212,5 +216,76 @@ async function loadMoreComments() {
         isLoading = false;
         const loadingContainer = document.getElementById('loadingContainer');
         loadingContainer.style.visibility = 'hidden';
+    }
+}
+
+function initializeLikeDislike() {
+    document.addEventListener('click', async (e) => {
+        const button = e.target.closest('.action-btn');
+        if (!button || button.disabled) return;
+
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+        const type = button.dataset.type;
+
+        try {
+            const response = await fetch(`/api/like-dislike?action=${action}&commentid=${id}&type=${type}`);
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to update like/dislike');
+            }
+
+            // Update UI
+            updateLikeDislikeUI(id, action);
+
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+}
+
+function updateLikeDislikeUI(id, action) {
+    const likeSpan = document.querySelector(`#like_post-${id}`);
+    const dislikeSpan = document.querySelector(`#dislike_post-${id}`);
+    const likeBtn = likeSpan.parentElement;
+    const dislikeBtn = dislikeSpan.parentElement;
+
+    if (action === "like") {
+        if (!likeBtn.classList.contains("liked-btn")) {
+            // Add like
+            likeSpan.textContent = Number(likeSpan.textContent) + 1;
+            likeBtn.classList.add("liked-btn");
+
+            // Remove dislike if exists
+            if (dislikeBtn.classList.contains("liked-btn")) {
+                dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
+                dislikeBtn.classList.remove("liked-btn");
+            }
+        } else {
+            // Remove like
+            likeSpan.textContent = Number(likeSpan.textContent) - 1;
+            likeBtn.classList.remove("liked-btn");
+        }
+    } else {
+        if (!dislikeBtn.classList.contains("liked-btn")) {
+            // Add dislike
+            dislikeSpan.textContent = Number(dislikeSpan.textContent) + 1;
+            dislikeBtn.classList.add("liked-btn");
+
+            // Remove like if exists
+            if (likeBtn.classList.contains("liked-btn")) {
+                likeSpan.textContent = Number(likeSpan.textContent) - 1;
+                likeBtn.classList.remove("liked-btn");
+            }
+        } else {
+            // Remove dislike
+            dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
+            dislikeBtn.classList.remove("liked-btn");
+        }
     }
 }

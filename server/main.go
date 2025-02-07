@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	forum "forum/funcs"
 	data "forum/funcs/database"
@@ -20,6 +21,7 @@ func main() {
 	http.HandleFunc("/api/login", handlers.AuthLG(handlers.Login))
 	http.HandleFunc("/api/register", handlers.AuthLG(handlers.Register))
 	http.HandleFunc("/api/logout", handlers.Auth(handlers.Logout))
+	http.HandleFunc("/api/user/status", CheckAuthStatus)
 
 	// static files
 	http.HandleFunc("/client/", forum.StaticFileHandler)
@@ -31,6 +33,8 @@ func main() {
 	http.HandleFunc("/api/comment", handlers.Commenting)
 	http.HandleFunc("/api/comment/more", handlers.LoadMoreComments)
 
+	http.HandleFunc("/api/posting", handlers.Auth(handlers.Posting))
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -39,8 +43,25 @@ func main() {
 		http.ServeFile(w, r, "../client/index.html")
 	})
 
-	// http.HandleFunc("/Posting", handlers.Auth(handlers.Posting))
 
 	fmt.Println("http://localhost:8081/")
 	http.ListenAndServe(":8081", nil)
+}
+
+// api/user/satus
+
+func CheckAuthStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userID, isAuthenticated := handlers.CheckIfCookieValid(w, r)
+
+	response := struct {
+		IsLoggedIn bool `json:"isLoggedIn"`
+		UserID     int  `json:"userId,omitempty"`
+	}{
+		IsLoggedIn: isAuthenticated,
+		UserID:     userID,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }

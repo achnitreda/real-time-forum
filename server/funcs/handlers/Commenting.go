@@ -112,11 +112,11 @@ func Commenting(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response := struct {
-			Id       int    `json:"id"`
-			Uname    string `json:"uname"`
-			Content  string `json:"content"`
-			Likes    int    `json:"likes"`
-			Dislikes int    `json:"dislikes"`
+			Id       int
+			Uname    string
+			Content  string
+			Likes    int
+			Dislikes int
 		}{
 			Id:       comment_id,
 			Uname:    username,

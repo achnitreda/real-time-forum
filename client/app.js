@@ -3,6 +3,8 @@ import { loadHomePage } from "./pages/home/index.js";
 import { loadLoginPage } from "./pages/login/index.js";
 import { loadRegisterPage } from "./pages/register/index.js";
 import { loadErrorPage } from "./pages/error/index.js";
+import { renderHeader } from "./components/header.js";
+import { loadPostingPage } from "./pages/posting/index.js";
 
 async function router() {
     const app = document.getElementById('app');
@@ -19,6 +21,9 @@ async function router() {
                 break;
             case '/register':
                 await loadRegisterPage(app);
+                break;
+            case '/posting':
+                await loadPostingPage(app);
                 break;
             case '/comment':
                 await loadCommentPage(app);
@@ -41,5 +46,8 @@ async function router() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    renderHeader();
+
     router();
 })
