@@ -98,4 +98,7 @@ client/
 │
 │── images/
     │── logo.png
+|server/
+    |__ main.go
+    |
 ```

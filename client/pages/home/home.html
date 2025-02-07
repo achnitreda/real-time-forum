@@ -1,27 +1,12 @@
 <div class="container">
   <div class="scrollmenu" id="filterContainer">
-    <div class="filter" id="categoryFilter">
-      <label>
-        <input
-          type="radio"
-          class="filteraction"
-          name="filter"
-          value="Created"
-        />
-        <span>My Posts</span>
-      </label>
-      <label>
-        <input type="radio" class="filteraction" name="filter" value="Liked" />
-        <span>Liked</span>
-      </label>
-      <label>
-        <input type="radio" class="filteraction" name="filter" value="{{.}}" />
-        <span>{{Categories}}</span>
-      </label>
-    </div>
+    <div class="filter" id="categoryFilter"></div>
+    <!-- categories -->
   </div>
   <main class="main-content">
-    <div class="Posts" id="postsContainer"></div>
+    <div class="Posts" id="postsContainer">
+      <!-- posts -->
+    </div>
     <div class="loading" id="loadingContainer">
       <div class="spinner"></div>
       Loading more posts...

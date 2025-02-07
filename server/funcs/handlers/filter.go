@@ -7,6 +7,7 @@ import (
 	types "forum/funcs/types"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -14,6 +15,7 @@ func FilterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	filter := strings.ToLower(r.URL.Query().Get("type"))
+	offset := r.URL.Query().Get("offset")
 
 	if filter != "" && !data.AllCategories[strings.ToLower(filter)] &&
 		filter != "created" && filter != "liked" {
@@ -37,13 +39,22 @@ func FilterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse offset
+	offsetInt := 0
+	if offset != "" {
+		offsetInt, _ = strconv.Atoi(offset)
+	}
+
 	opts := types.QueryOptions{
 		UserID: userID,
 		Filter: filter,
+		Limit:  4,
+		Offset: offsetInt,
 	}
 
 	query, args := data.BuildPostQuery(opts)
 	posts, err := data.GetPosts(userID, query, args...)
+
 	if err != nil && err != sql.ErrNoRows {
 		log.Println("Error getting posts:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -54,8 +65,8 @@ func FilterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := struct {
-		Posts      []types.POST
-		IsLoggedIn bool
+		Posts      []types.POST `json:"posts"`
+		IsLoggedIn bool         `json:"isLoggedIn"`
 	}{
 		Posts:      posts,
 		IsLoggedIn: userID > 0,

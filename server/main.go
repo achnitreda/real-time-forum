@@ -24,25 +24,23 @@ func main() {
 	// static files
 	http.HandleFunc("/client/", forum.StaticFileHandler)
 
+	http.HandleFunc("/api/home", handlers.Home)
+	http.HandleFunc("/api/filter", handlers.FilterHandler)
+	http.HandleFunc("/api/like-dislike", handlers.HandleLikeDislike)
+
+	http.HandleFunc("/api/comment", handlers.Commenting)
+	http.HandleFunc("/api/comment/more", handlers.LoadMoreComments)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
 			return
 		}
-		http.ServeFile(w, r, "client/index.html")
+		http.ServeFile(w, r, "../client/index.html")
 	})
 
-	// http.HandleFunc("/", handlers.Home)
-
 	// http.HandleFunc("/Posting", handlers.Auth(handlers.Posting))
-	// http.HandleFunc("/load-more-posts", handlers.LoadMorePosts)
 
-	// http.HandleFunc("/Commenting", handlers.Commenting)
-	// http.HandleFunc("/load-more-comments", handlers.LoadMoreComments)
-
-	// http.HandleFunc("/like-dislike", handlers.HandleLikeDislike)
-	// http.HandleFunc("/filter", handlers.FilterHandler)
-
-	fmt.Println("http://localhost:8080/")
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("http://localhost:8081/")
+	http.ListenAndServe(":8081", nil)
 }

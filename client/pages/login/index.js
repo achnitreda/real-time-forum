@@ -1,23 +1,60 @@
 export async function loadLoginPage(container) {
     try {
-        // NOTE: should it really be /client/pages/login/login.html 
-        // or can I use relative path
-        const response = await fetch('/client/pages/login/login.html')
-        const html = await response.text()
-        container.innerHTML = html
+        // 1. Load HTML & CSS
+        const htmlResponse = await fetch('/client/pages/login/login.html');
+        const html = await htmlResponse.text();
 
+        const cssResponse = await fetch('/client/pages/login/login.css');
+        const css = await cssResponse.text();
+
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = css;
+        document.head.appendChild(styleSheet);
+
+        container.innerHTML = html;
+
+        // 2. Initialize login form
         initializeLoginForm();
+
     } catch (error) {
         console.error('Error loading login page:', error);
+        container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
     }
 }
 
 function initializeLoginForm() {
     const loginForm = document.getElementById('loginForm');
     const errorMessage = document.getElementById('errorMessage');
+    const registerLink = document.getElementById('registerLink');
 
     loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        const formData = new FormData(loginForm);
-    })
+        e.preventDefault();
+
+        try {
+            const formData = new FormData(loginForm);
+
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Login failed');
+            }
+
+            // Redirect to home page on successful login
+            window.location.href = '/';
+
+        } catch (error) {
+            errorMessage.textContent = error.message;
+            errorMessage.style.color = 'red';
+        }
+    });
+
+    // Handle register link click
+    registerLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = '/register';
+    });
 }

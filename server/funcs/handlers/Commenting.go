@@ -25,6 +25,10 @@ func Commenting(w http.ResponseWriter, r *http.Request) {
 		user_id := 0
 		if Cookie, err := r.Cookie("Token"); err == nil {
 			user_id, _ = data.GetUserIDFromToken(Cookie.Value)
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Token"})
+			return
 		}
 
 		opts := types.QueryOptions{
