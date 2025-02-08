@@ -1,3 +1,5 @@
+import { styleManager } from "../../api/style-manager.js";
+
 let currentOffset = 0;
 let isLoading = false;
 let hasMorePosts = true;
@@ -9,12 +11,11 @@ export async function loadHomePage(container) {
         const htmlResponse = await fetch('/client/pages/home/home.html');
         const html = await htmlResponse.text();
 
-        const cssResponse = await fetch('/client/pages/home/home.css');
-        const css = await cssResponse.text();
-
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = css;
-        document.head.appendChild(styleSheet);
+        // Load styles using style manager
+        await styleManager.loadStyles(
+            'home',
+            '/client/pages/home/home.css'
+        );
 
         container.innerHTML = html;
 
@@ -84,7 +85,10 @@ async function loadPosts(append = false, isFilter = false) {
 
         if (!response.ok) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                const nagivationEvent = new CustomEvent('navigate', {
+                    detail: { path: '/login' }
+                })
+                window.dispatchEvent(nagivationEvent)
                 return;
             }
             throw new Error('Failed to fetch posts');
@@ -209,9 +213,15 @@ function createPostElement(post, isLoggedIn) {
     const commentBtn = postDiv.querySelector('.comment-btn');
     commentBtn.addEventListener('click', () => {
         if (!isLoggedIn) {
-            window.location.href = '/login';
+            const nagivationEvent = new CustomEvent('navigate', {
+                detail: { path: '/login' }
+            })
+            window.dispatchEvent(nagivationEvent)
         } else {
-            window.location.href = `/comment?post_id=${post.ID}`;
+            const nagivationEvent = new CustomEvent('navigate', {
+                detail: { path: `/comment?post_id=${post.ID}` }
+            })
+            window.dispatchEvent(nagivationEvent)
         }
     });
 
@@ -297,7 +307,10 @@ function initializeLikeDislike() {
             const response = await fetch(`/api/like-dislike?action=${action}&commentid=${id}&type=${type}`);
 
             if (response.status === 401) {
-                window.location.href = '/login';
+                const nagivationEvent = new CustomEvent('navigate', {
+                    detail: { path: '/login' }
+                })
+                window.dispatchEvent(nagivationEvent)
                 return;
             }
 

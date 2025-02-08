@@ -1,15 +1,16 @@
+import { styleManager } from "../../api/style-manager.js";
+
 export async function loadErrorPage(container, errorData) {
     try {
         // Load HTML & CSS
         const htmlResponse = await fetch('/client/pages/error/error.html');
         const html = await htmlResponse.text();
-        const cssResponse = await fetch('/client/pages/error/error.css');
-        const css = await cssResponse.text();
-
-        // Add CSS to head
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = css;
-        document.head.appendChild(styleSheet);
+        
+        // Load styles using style manager
+        await styleManager.loadStyles(
+            'error',
+            '/client/pages/error/error.css'
+        );
 
         // Set HTML content
         container.innerHTML = html;
@@ -44,11 +45,13 @@ function initializeErrorPage(errorData = {}) {
     if (goBackLink) {
         goBackLink.addEventListener('click', (e) => {
             e.preventDefault();
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = '/';
-            }
+
+            const previousPath = sessionStorage.getItem('previousPath') || '/';
+
+            const navigationEvent = new CustomEvent('navigate', {
+                detail: { path: previousPath }
+            });
+            window.dispatchEvent(navigationEvent);
         });
     }
 }

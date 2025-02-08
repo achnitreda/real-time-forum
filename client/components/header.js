@@ -5,7 +5,7 @@ export async function renderHeader() {
         const data = await response.json();
 
         const header = document.getElementById('header');
-        header.innerHTML = createHeaderContent(data.isLoggedIn);
+        header.innerHTML = createHeaderContent();
 
         if (data.isLoggedIn) {
             initializeHeaderForms();
@@ -15,7 +15,7 @@ export async function renderHeader() {
     }
 }
 
-function createHeaderContent(isLoggedIn) {
+function createHeaderContent() {
     const loggedInContent = `
         <header class="head">
             <a class="logo" href="/">Forum</a>
@@ -45,29 +45,22 @@ function createHeaderContent(isLoggedIn) {
         </header>
     `;
 
-    const loggedOutContent = `
-        <header class="head">
-            <a class="logo" href="/">Forum</a>
-            <div style="display: flex"> 
-                <a class="btn btn1" style="margin-right: 10px" href="/login">Login</a>
-                <a class="btn btn2" href="/register">Register</a>
-            </div>
-        </header>
-    `;
-
-    return isLoggedIn ? loggedInContent : loggedOutContent;
+    return loggedInContent;
 }
 
 function initializeHeaderForms() {
     const headerForm = document.querySelector('.head form');
-    
+
     headerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.submitter;
         const action = button.dataset.action;
 
         if (action === 'posting') {
-            window.location.href = '/posting';
+            const navigationEvent = new CustomEvent('navigate', {
+                detail: { path: '/posting' }
+            });
+            window.dispatchEvent(navigationEvent);
         } else if (action === 'logout') {
             try {
                 const response = await fetch('/api/logout', {
@@ -75,7 +68,10 @@ function initializeHeaderForms() {
                 });
 
                 if (response.ok) {
-                    window.location.href = '/login';
+                    const navigationEvent = new CustomEvent('navigate', {
+                        detail: { path: '/login' }
+                    });
+                    window.dispatchEvent(navigationEvent);
                 }
             } catch (error) {
                 console.error('Logout error:', error);

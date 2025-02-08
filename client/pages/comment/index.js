@@ -1,3 +1,5 @@
+import { styleManager } from "../../api/style-manager.js";
+
 let offset = 3;
 let isLoading = false;
 let hasMoreComments = true;
@@ -8,12 +10,11 @@ export async function loadCommentPage(container) {
         const htmlResponse = await fetch('/client/pages/comment/comment.html');
         const html = await htmlResponse.text();
 
-        const cssResponse = await fetch('/client/pages/comment/comment.css');
-        const css = await cssResponse.text();
-
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = css;
-        document.head.appendChild(styleSheet);
+        // Load styles using style manager
+        await styleManager.loadStyles(
+            'comment',
+            '/client/pages/comment/comment.css'
+        );
 
         container.innerHTML = html;
 
@@ -50,7 +51,10 @@ async function initializeCommentPage(postId) {
     const response = await fetch(`/api/comment?post_id=${postId}`);
     if (!response.ok) {
         if (response.status === 401) {
-            window.location.href = '/login';
+            const nagivationEvent = new CustomEvent('navigate', {
+                detail: { path: '/login' }
+            })
+            window.dispatchEvent(nagivationEvent)
             return;
         }
         throw new Error('Failed to fetch post and comments');
@@ -140,7 +144,10 @@ function initializeCommentForm(postId) {
             });
 
             if (response.status === 401) {
-                window.location.href = '/login';
+                const nagivationEvent = new CustomEvent('navigate', {
+                    detail: { path: '/login' }
+                })
+                window.dispatchEvent(nagivationEvent)
                 return;
             }
 
@@ -232,7 +239,10 @@ function initializeLikeDislike() {
             const response = await fetch(`/api/like-dislike?action=${action}&commentid=${id}&type=${type}`);
 
             if (response.status === 401) {
-                window.location.href = '/login';
+                const nagivationEvent = new CustomEvent('navigate', {
+                    detail: { path: '/login' }
+                })
+                window.dispatchEvent(nagivationEvent)
                 return;
             }
 

@@ -35,6 +35,10 @@ Password-
 ```
 
 ```
+=> likes not working ⛔
+```
+
+```
 - private messages : ⛔
 Because it should be in the landing page I need at least to create it UI
 => implement it just like the other real-time-forum

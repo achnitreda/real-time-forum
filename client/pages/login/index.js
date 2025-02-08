@@ -1,15 +1,21 @@
+import { styleManager } from "../../api/style-manager.js";
+
+let loginCleanupFunctions = []
+
 export async function loadLoginPage(container) {
     try {
+        // 0 Cleanup previous event listeners
+        cleanupLoginListeners();
+
         // 1. Load HTML & CSS
         const htmlResponse = await fetch('/client/pages/login/login.html');
         const html = await htmlResponse.text();
 
-        const cssResponse = await fetch('/client/pages/login/login.css');
-        const css = await cssResponse.text();
-
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = css;
-        document.head.appendChild(styleSheet);
+        // Load styles using style manager
+        await styleManager.loadStyles(
+            'login',
+            '/client/pages/login/login.css'
+        );
 
         container.innerHTML = html;
 
@@ -22,17 +28,20 @@ export async function loadLoginPage(container) {
     }
 }
 
+function cleanupLoginListeners() {
+    loginCleanupFunctions.forEach(cleanup => cleanup());
+    loginCleanupFunctions = [];
+}
+
 function initializeLoginForm() {
     const loginForm = document.getElementById('loginForm');
     const errorMessage = document.getElementById('errorMessage');
     const registerLink = document.getElementById('registerLink');
 
-    loginForm.addEventListener('submit', async (e) => {
+    const formSubmitHandler = async (e) => {
         e.preventDefault();
-
         try {
             const formData = new FormData(loginForm);
-
             const response = await fetch('/api/login', {
                 method: 'POST',
                 body: formData
@@ -43,18 +52,31 @@ function initializeLoginForm() {
                 throw new Error(data.error || 'Login failed');
             }
 
-            // Redirect to home page on successful login
-            window.location.href = '/';
-
+            const navigationEvent = new CustomEvent('navigate', {
+                detail: { path: '/' }
+            });
+            window.dispatchEvent(navigationEvent);
         } catch (error) {
             errorMessage.textContent = error.message;
             errorMessage.style.color = 'red';
         }
-    });
+    };
 
-    // Handle register link click
-    registerLink.addEventListener('click', (e) => {
+    const registerLinkHandler = (e) => {
         e.preventDefault();
-        window.location.href = '/register';
-    });
+        e.stopPropagation(); // Prevent event bubbling
+        const navigationEvent = new CustomEvent('navigate', {
+            detail: { path: '/register' }
+        });
+        window.dispatchEvent(navigationEvent);
+    };
+
+    loginForm.addEventListener('submit', formSubmitHandler);
+    registerLink.addEventListener('click', registerLinkHandler);
+
+    // Store cleanup functions
+    loginCleanupFunctions.push(
+        () => loginForm.removeEventListener('submit', formSubmitHandler),
+        () => registerLink.removeEventListener('click', registerLinkHandler)
+    );
 }

@@ -19,6 +19,7 @@ async function checkAuthStatus() {
 
 async function navigateToPage(path) {
     window.history.pushState({}, '', path);
+    console.log(42, window.history, path)
     await router();
 }
 
@@ -27,36 +28,42 @@ async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
     if (header) {
         header.innerHTML = '';
     }
-    
+
     if (shouldShowHeader) {
         await renderHeader();
     }
-    
+
     await loadPage(app);
 }
 
 async function router() {
     const app = document.getElementById('app');
-    const path = window.location.pathname;
+    const currentPath = window.location.pathname;
+
+    const previousPath = sessionStorage.getItem('currentPath')
+    if (previousPath && previousPath !== currentPath) {
+        sessionStorage.setItem('previousPath', previousPath);
+    }
+    sessionStorage.setItem('currentPath', currentPath);
 
     try {
         const isAuthenticated = await checkAuthStatus();
         const protectedRoutes = ['/', '/home', '/posting', '/comment'];
         const authRoutes = ['/login', '/register'];
-        
+
         // Handle auth redirects
-        if (isAuthenticated && authRoutes.includes(path)) {
+        if (isAuthenticated && authRoutes.includes(currentPath)) {
             await navigateToPage('/');
             return;
         }
-        
-        if (!isAuthenticated && protectedRoutes.includes(path)) {
+
+        if (!isAuthenticated && protectedRoutes.includes(currentPath)) {
             await navigateToPage('/login');
             return;
         }
 
         // Regular routing with header control
-        switch (path) {
+        switch (currentPath) {
             case '/':
             case '/home':
                 await handlePageLoad(app, loadHomePage, true);
@@ -107,6 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('popstate', () => {
     router();
 });
+
+window.addEventListener('navigate', (e) => {
+    const { path } = e.detail
+    navigateToPage(path)
+})
 
 // Handle link clicks
 document.addEventListener('click', (e) => {

@@ -1,15 +1,16 @@
+import { styleManager } from "../../api/style-manager.js";
+
 export async function loadPostingPage(container) {
     try {
         // 1. Load HTML & CSS
         const htmlResponse = await fetch('/client/pages/posting/posting.html');
         const html = await htmlResponse.text();
 
-        const cssResponse = await fetch('/client/pages/posting/posting.css');
-        const css = await cssResponse.text();
-
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = css;
-        document.head.appendChild(styleSheet);
+        // Load styles using style manager
+        await styleManager.loadStyles(
+            'posting',
+            '/client/pages/posting/posting.css'
+        );
 
         container.innerHTML = html;
 
@@ -92,7 +93,10 @@ async function initializePostingForm() {
                 }
 
                 // Redirect to home page on success
-                window.location.href = '/';
+                const nagivationEvent = new CustomEvent('navigate', {
+                    detail: { path: '/' }
+                })
+                window.dispatchEvent(nagivationEvent)
 
             } catch (error) {
                 errorContainer.textContent = error.message;

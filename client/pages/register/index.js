@@ -1,20 +1,21 @@
+import { styleManager } from "../../api/style-manager.js";
+
+let registerCleanupFunctions = [];
+
 export async function loadRegisterPage(container) {
     try {
-        // Load HTML & CSS
+        // Cleanup previous event listeners
+        cleanupRegisterListeners();
+
         const htmlResponse = await fetch('/client/pages/register/register.html');
         const html = await htmlResponse.text();
-        const cssResponse = await fetch('/client/pages/register/register.css');
-        const css = await cssResponse.text();
 
-        // Add CSS to head
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = css;
-        document.head.appendChild(styleSheet);
+        await styleManager.loadStyles(
+            'register',
+            '/client/pages/register/register.css'
+        );
 
-        // Set HTML content
         container.innerHTML = html;
-
-        // Initialize register page functionality
         initializeRegister();
     } catch (error) {
         console.error('Error loading register page:', error);
@@ -22,19 +23,26 @@ export async function loadRegisterPage(container) {
     }
 }
 
+function cleanupRegisterListeners() {
+    registerCleanupFunctions.forEach(cleanup => cleanup());
+    registerCleanupFunctions = [];
+}
+
 function initializeRegister() {
     const registerForm = document.getElementById('registerForm');
     const errorMessage = document.getElementById('errorMessage');
     const loginLink = document.getElementById('loginLink');
 
-    // Handle login link click
-    loginLink.addEventListener('click', (e) => {
+    const loginLinkHandler = (e) => {
         e.preventDefault();
-        window.location.href = '/login';
-    });
+        e.stopPropagation(); // Prevent event bubbling
+        const navigationEvent = new CustomEvent('navigate', {
+            detail: { path: '/login' }
+        });
+        window.dispatchEvent(navigationEvent);
+    };
 
-    // Handle form submission
-    registerForm.addEventListener('submit', async (e) => {
+    const formSubmitHandler = async (e) => {
         e.preventDefault();
         errorMessage.textContent = '';
 
@@ -50,8 +58,6 @@ function initializeRegister() {
                 gender: formData.get('gender')
             };
 
-            console.log("userData =>", userData)
-
             const response = await fetch('/api/register', {
                 method: 'POST',
                 headers: {
@@ -62,17 +68,26 @@ function initializeRegister() {
 
             const data = await response.json();
 
-            console.log(data)
-
             if (!response.ok) {
                 throw new Error(data.error || 'Registration failed');
             }
 
-            // Registration successful
-            window.location.href = '/login';
+            const navigationEvent = new CustomEvent('navigate', {
+                detail: { path: '/login' }
+            });
+            window.dispatchEvent(navigationEvent);
         } catch (error) {
             errorMessage.textContent = error.message;
             errorMessage.style.display = 'block';
         }
-    });
+    };
+
+    loginLink.addEventListener('click', loginLinkHandler);
+    registerForm.addEventListener('submit', formSubmitHandler);
+
+    // Store cleanup functions
+    registerCleanupFunctions.push(
+        () => loginLink.removeEventListener('click', loginLinkHandler),
+        () => registerForm.removeEventListener('submit', formSubmitHandler)
+    );
 }
