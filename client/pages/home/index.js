@@ -168,7 +168,7 @@ function createPostElement(post, isLoggedIn) {
         </div>
         <h4>${post.Title}</h4>
         <p class="content">${post.Content}</p>
-        ${post.ImgBase64 ? `<img src="data:image/jpeg;base64,${post.ImgBase64}" alt="Post image" class="post-image"/>` : ''}
+    ${post.ImgBase64 ? `<img src="data:image/*;base64,${post.ImgBase64}" alt="Post image" class="post-image"/>` : ''}
         <div class="categories">
             ${post.Category.map(cat => `
                 <span class="category" data-category="${cat}">
@@ -279,6 +279,7 @@ function handleCategoryClick(category) {
         currentFilter = category;
         currentOffset = 0;
         hasMorePosts = true;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         loadPosts(false, true);
     }
 }

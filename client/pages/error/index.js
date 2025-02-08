@@ -5,15 +5,15 @@ export async function loadErrorPage(container, errorData) {
         const html = await htmlResponse.text();
         const cssResponse = await fetch('/client/pages/error/error.css');
         const css = await cssResponse.text();
-        
+
         // Add CSS to head
         const styleSheet = document.createElement('style');
         styleSheet.textContent = css;
         document.head.appendChild(styleSheet);
-        
+
         // Set HTML content
         container.innerHTML = html;
-        
+
         // Initialize error page with error data
         initializeErrorPage(errorData);
     } catch (error) {

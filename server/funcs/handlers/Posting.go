@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -42,6 +43,23 @@ func Posting(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			imageExists = true
 			defer file.Close()
+
+			// Check file extension
+			ext := strings.ToLower(filepath.Ext(header.Filename))
+			validExtensions := map[string]bool{
+				".jpg":  true,
+				".jpeg": true,
+				".png":  true,
+				".gif":  true,
+			}
+
+			if !validExtensions[ext] {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": "Invalid file type. Only .jpg, .jpeg, .png, and .gif files are allowed",
+				})
+				return
+			}
 
 			name, err = data.GenereteTocken()
 			if err != nil {

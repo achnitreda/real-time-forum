@@ -41,14 +41,16 @@ function initializeRegister() {
         try {
             const formData = new FormData(registerForm);
             const userData = {
+                email: formData.get('email'),
+                username: formData.get('uname'),
+                password: formData.get('password'),
                 firstName: formData.get('firstName'),
                 lastName: formData.get('lastName'),
-                username: formData.get('uname'),
                 age: parseInt(formData.get('age')),
-                gender: formData.get('gender'),
-                email: formData.get('email'),
-                password: formData.get('password')
+                gender: formData.get('gender')
             };
+
+            console.log("userData =>", userData)
 
             const response = await fetch('/api/register', {
                 method: 'POST',

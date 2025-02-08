@@ -7,18 +7,15 @@
 - This can be called having a single page application.
 
 => how to know if your app is MPA or SSR app ✅
-=> how to switch your app from MPA or SSR to SPA
-NOTE:
--> I will combine all my css file into a single one
-and to modified later if it's the best option ⛔
+=> how to switch your app from MPA or SSR to SPA ✅
 ```
 
 ```
-- New Forum: ⛔
+- New Forum:  ✅ 
 => users need to login in order to see the posts and everything
 => not like the old forum that let's unregisted users see posts
 
-- register part: ⛔
+- register part: ✅
 => need to have additional infos
 Username-
 Age
@@ -31,9 +28,8 @@ Password-
 - login part: ✅
 => The user must be able to connect using either the nickname or the e-mail combined with the password.
 
-- logout part: ⛔
+- logout part: ✅
 => The user must be able to log out from any page on the forum.
-=> need to be updated.
 
 - posts and comments are like the old forum: ✅
 ```
@@ -86,16 +82,8 @@ client/
 │       │── error.css
 │
 │── components/
-│   │── header/
-│   │   │── index.js
-│   │   │── header.html
-│   │   │── header.css
-│
+│   │── header.js
 │── api/
-│   │── comment.js
-│   │── post.js
-│   │── auth.js
-│
 │── images/
     │── logo.png
 |server/

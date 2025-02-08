@@ -1,11 +1,3 @@
-body {
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  background-color: #212121;
-  color: #ececec;
-  width: 70%;
-  margin: auto;
-}
-
 .action-btn.liked-btn {
   background-color: white;
   color: black;

@@ -6,48 +6,114 @@ import { loadErrorPage } from "./pages/error/index.js";
 import { renderHeader } from "./components/header.js";
 import { loadPostingPage } from "./pages/posting/index.js";
 
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/user/status');
+        const data = await response.json();
+        return data.isLoggedIn;
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        return false;
+    }
+}
+
+async function navigateToPage(path) {
+    window.history.pushState({}, '', path);
+    await router();
+}
+
+async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
+    const header = document.getElementById('header');
+    if (header) {
+        header.innerHTML = '';
+    }
+    
+    if (shouldShowHeader) {
+        await renderHeader();
+    }
+    
+    await loadPage(app);
+}
+
 async function router() {
     const app = document.getElementById('app');
     const path = window.location.pathname;
 
     try {
+        const isAuthenticated = await checkAuthStatus();
+        const protectedRoutes = ['/', '/home', '/posting', '/comment'];
+        const authRoutes = ['/login', '/register'];
+        
+        // Handle auth redirects
+        if (isAuthenticated && authRoutes.includes(path)) {
+            await navigateToPage('/');
+            return;
+        }
+        
+        if (!isAuthenticated && protectedRoutes.includes(path)) {
+            await navigateToPage('/login');
+            return;
+        }
+
+        // Regular routing with header control
         switch (path) {
             case '/':
             case '/home':
-                await loadHomePage(app);
+                await handlePageLoad(app, loadHomePage, true);
                 break;
             case '/login':
-                await loadLoginPage(app);
+                await handlePageLoad(app, loadLoginPage, false);
                 break;
             case '/register':
-                await loadRegisterPage(app);
+                await handlePageLoad(app, loadRegisterPage, false);
                 break;
             case '/posting':
-                await loadPostingPage(app);
+                await handlePageLoad(app, loadPostingPage, true);
                 break;
             case '/comment':
-                await loadCommentPage(app);
+                await handlePageLoad(app, loadCommentPage, true);
                 break;
             default:
-                await loadErrorPage(app, {
-                    status: '404',
-                    title: 'Page Not Found',
-                    message: 'The requested page could not be found.'
-                });
+                await handlePageLoad(
+                    app,
+                    (app) => loadErrorPage(app, {
+                        status: '404',
+                        title: 'Page Not Found',
+                        message: 'The requested page could not be found.'
+                    }),
+                    true
+                );
         }
     } catch (error) {
         console.error('Router error:', error);
-        await loadErrorPage(app, {
-            status: '500',
-            title: 'Internal Error',
-            message: 'Something went wrong. Please try again later.'
-        });
+        await handlePageLoad(
+            app,
+            (app) => loadErrorPage(app, {
+                status: '500',
+                title: 'Internal Error',
+                message: 'Something went wrong. Please try again later.'
+            }),
+            true
+        );
     }
 }
 
+// Handle initial page load
 document.addEventListener('DOMContentLoaded', () => {
-
-    renderHeader();
-
     router();
-})
+});
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', () => {
+    router();
+});
+
+// Handle link clicks
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (link && link.href.startsWith(window.location.origin)) {
+        e.preventDefault();
+        const newPath = new URL(link.href).pathname;
+        navigateToPage(newPath);
+    }
+});

@@ -2,7 +2,6 @@ package forum
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -22,14 +21,32 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
-	fmt.Println("email ->",email)
-	uname := strings.ToLower(strings.TrimSpace(r.FormValue("uname")))
-	password := r.FormValue("password")
-	firstName := r.FormValue("firstName")
-	lastName := r.FormValue("lastName")
-	age := r.FormValue("age")
-	gender := r.FormValue("gender")
+	// Create a struct to match the incoming JSON
+	var userData struct {
+		Email     string `json:"email"`
+		Username  string `json:"username"`
+		Password  string `json:"password"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Age       int    `json:"age"`
+		Gender    string `json:"gender"`
+	}
+
+	// Decode JSON from request body
+	if err := json.NewDecoder(r.Body).Decode(&userData); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request format"})
+		return
+	}
+
+	// Convert values and validate
+	email := strings.ToLower(strings.TrimSpace(userData.Email))
+	uname := strings.ToLower(strings.TrimSpace(userData.Username))
+	password := userData.Password
+	firstName := userData.FirstName
+	lastName := userData.LastName
+	age := strconv.Itoa(userData.Age)
+	gender := userData.Gender
 
 	if err := RegisterValidation(email, uname, password, firstName, lastName, age, gender); err != "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -85,9 +102,8 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 func RegisterValidation(email, uname, password, firstName, lastName, age, gender string) string {
 	// Email validation
-	// emailRegex := regexp.MustCompile(`^[a-zA-Z0-9.]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	if email == "" {
-		fmt.Println("ssssss")
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9.]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if email == "" || !emailRegex.MatchString(email) {
 		return "Please enter a valid email address"
 	}
 

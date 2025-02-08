@@ -1,6 +1,7 @@
 package forum
 
 import (
+	"encoding/json"
 	Data "forum/funcs/database"
 	"net/http"
 )
@@ -12,25 +13,38 @@ func ClearSession(w http.ResponseWriter) {
 	})
 }
 
-func Auth(funcNext http.HandlerFunc) http.HandlerFunc {
+func Auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, bl := CheckIfCookieValid(w, r); bl {
-			funcNext(w, r)
+		w.Header().Set("Content-Type", "application/json")
+
+		if _, isAuth := CheckIfCookieValid(w, r); isAuth {
+			next(w, r)
 		} else {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":    "Authentication required",
+				"redirect": "/login",
+			})
 		}
 	}
 }
 
-func AuthLG(funcNext http.HandlerFunc) http.HandlerFunc {
+func AuthLG(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, bl := CheckIfCookieValid(w, r); bl {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+		w.Header().Set("Content-Type", "application/json")
+
+		if _, isAuth := CheckIfCookieValid(w, r); isAuth {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":    "Already authenticated",
+				"redirect": "/",
+			})
 		} else {
-			funcNext(w, r)
+			next(w, r)
 		}
 	}
 }
+
 func CheckIfCookieValid(w http.ResponseWriter, r *http.Request) (int, bool) {
 	var userId int
 	c, err := r.Cookie("Token")
