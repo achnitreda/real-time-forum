@@ -11,7 +11,7 @@
 ```
 
 ```
-- New Forum:  ✅ 
+- New Forum:  ✅
 => users need to login in order to see the posts and everything
 => not like the old forum that let's unregisted users see posts
 
@@ -47,6 +47,8 @@ Because it should be in the landing page I need at least to create it UI
 ```
 - the new added feature in this project is private messages
 - that we will use |websockets| in it
+- send emojis to each other test it ??
+- notif: A user must be able to see the notifications in every page of the project
 ```
 
 ```
@@ -58,7 +60,7 @@ client/
 │   │── home/
 │   │   │── index.js
 │   │   │── home.html
-│   │   │── home.css  
+│   │   │── home.css
 │   │
 │   │── login/
 │   │   │── index.js
@@ -93,4 +95,71 @@ client/
 |server/
     |__ main.go
     |
+```
+
+---
+
+```
+- Images handling:
+supporting various types of extensions.
+In this project you have to handle at least JPEG, PNG and GIF types.
+You will have to store the images, it can be done by storing the file/path in the database
+and saving the image in a specific file system.
+
+-
+```
+
+## Docs:
+
+- clean-up event listeners:
+
+```
+// Without cleanup
+function initializePage() {
+    const button = document.querySelector('.like-button');
+
+    button.addEventListener('click', async () => {
+        await fetch('/api/like');
+        updateUI();
+    });
+}
+
+// What happens:
+// 1. User visits page - 1 listener added
+// 2. Navigates away and back - 2nd listener added
+// 3. Clicks like button once
+// 4. Two API calls are made!
+// 5. UI updates twice
+// 6. Data gets corrupted
+```
+
+- stop event bubbling:
+
+```
+// Without stopPropagation
+const registerLinkHandler = (e) => {
+    e.preventDefault();
+    // This navigation event is dispatched
+    window.dispatchEvent(new CustomEvent('navigate', {
+        detail: { path: '/register' }
+    }));
+};
+
+// Event bubbles up to document handler which also tries to navigate
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (link) {
+        // This would cause a second navigation attempt!
+        navigateToPage(link.href);
+    }
+});
+
+// With stopPropagation - only one navigation occurs
+const registerLinkHandler = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stops here, document handler never runs
+    window.dispatchEvent(new CustomEvent('navigate', {
+        detail: { path: '/register' }
+    }));
+};
 ```

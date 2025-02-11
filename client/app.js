@@ -1,10 +1,13 @@
-import { loadCommentPage } from "./pages/comment/index.js";
-import { loadHomePage } from "./pages/home/index.js";
-import { loadLoginPage } from "./pages/login/index.js";
-import { loadRegisterPage } from "./pages/register/index.js";
-import { loadErrorPage } from "./pages/error/index.js";
-import { renderHeader } from "./components/header.js";
-import { loadPostingPage } from "./pages/posting/index.js";
+import { loadCommentPage } from "./pages/Comment.js";
+import { loadHomePage } from "./pages/Home.js";
+import { loadLoginPage } from "./pages/Login.js";
+import { loadRegisterPage } from "./pages/Register.js";
+import { loadErrorPage } from "./pages/Error.js";
+import { renderHeader } from "./components/Header.js";
+import { loadPostingPage } from "./pages/Posting.js";
+
+// Current page cleanup function
+let currentCleanupFunction = null;
 
 async function checkAuthStatus() {
     try {
@@ -19,28 +22,49 @@ async function checkAuthStatus() {
 
 async function navigateToPage(path) {
     window.history.pushState({}, '', path);
-    console.log(42, window.history, path)
     await router();
 }
 
 async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
-    const header = document.getElementById('header');
-    if (header) {
-        header.innerHTML = '';
-    }
+    try {
+        // Clean up previous page if needed
+        if (currentCleanupFunction) {
+            await currentCleanupFunction();
+            currentCleanupFunction = null;
+        }
 
-    if (shouldShowHeader) {
-        await renderHeader();
-    }
+        // Clear previous content
+        app.innerHTML = '';
 
-    await loadPage(app);
+        const header = document.getElementById('header');
+        if (header) {
+            header.innerHTML = '';
+        }
+
+        // Show header if needed
+        if (shouldShowHeader) {
+            await renderHeader();
+        }
+
+        // Load new page
+        const cleanup = await loadPage(app);
+
+        // Store cleanup function if provided
+        if (typeof cleanup === 'function') {
+            currentCleanupFunction = cleanup;
+        }
+    } catch (error) {
+        console.error('Error in handlePageLoad:', error);
+        throw error;
+    }
 }
 
 async function router() {
     const app = document.getElementById('app');
     const currentPath = window.location.pathname;
 
-    const previousPath = sessionStorage.getItem('currentPath')
+    // Update session storage for navigation history
+    const previousPath = sessionStorage.getItem('currentPath');
     if (previousPath && previousPath !== currentPath) {
         sessionStorage.setItem('previousPath', previousPath);
     }
@@ -105,27 +129,34 @@ async function router() {
     }
 }
 
-// Handle initial page load
-document.addEventListener('DOMContentLoaded', () => {
-    router();
-});
+// Event Listeners
+const eventListeners = {
+    init() {
+        // Handle initial page load
+        document.addEventListener('DOMContentLoaded', router);
 
-// Handle browser back/forward buttons
-window.addEventListener('popstate', () => {
-    router();
-});
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', router);
 
-window.addEventListener('navigate', (e) => {
-    const { path } = e.detail
-    navigateToPage(path)
-})
+        // Handle custom navigation events
+        window.addEventListener('navigate', (e) => {
+            const { path } = e.detail;
+            navigateToPage(path);
+        });
 
-// Handle link clicks
-document.addEventListener('click', (e) => {
-    const link = e.target.closest('a');
-    if (link && link.href.startsWith(window.location.origin)) {
-        e.preventDefault();
-        const newPath = new URL(link.href).pathname;
-        navigateToPage(newPath);
+        // Handle link clicks
+        document.addEventListener('click', this.handleLinkClick);
+    },
+
+    handleLinkClick(e) {
+        const link = e.target.closest('a');
+        if (link && link.href.startsWith(window.location.origin)) {
+            e.preventDefault();
+            const newPath = new URL(link.href).pathname;
+            navigateToPage(newPath);
+        }
     }
-});
+};
+
+// Initialize the application
+eventListeners.init();

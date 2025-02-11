@@ -1,24 +1,42 @@
-import { styleManager } from "../../api/style-manager.js";
-
 let offset = 3;
 let isLoading = false;
 let hasMoreComments = true;
+let commentCleanupFunctions = [];
 
 export async function loadCommentPage(container) {
     try {
-        // 1. Load HTML & CSS
-        const htmlResponse = await fetch('/client/pages/comment/comment.html');
-        const html = await htmlResponse.text();
+        cleanupCommentListeners();
 
-        // Load styles using style manager
-        await styleManager.loadStyles(
-            'comment',
-            '/client/pages/comment/comment.css'
-        );
+        container.innerHTML = `
+            <div class="container">
+                <div class="post-container">
+                    <div class="post" id="postDetails"></div>
 
-        container.innerHTML = html;
+                    <form class="myform" id="commentForm">
+                        <textarea
+                            name="Content"
+                            placeholder="Enter your comment..."
+                            required
+                        ></textarea>
+                        <button class="input-comment btn" type="submit">Comment</button>
+                    </form>
 
-        // 2. Get post_id from URL
+                    <div class="comments-section">
+                        <h2>Comments</h2>
+                        <div id="commentsContainer"></div>
+                        <div class="loading" id="loadingContainer">
+                            <div class="spinner"></div>
+                            Loading more comments...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Get post_id from URL
+        // Example URL: http://yoursite.com/comment?post_id=123
+        // 1. window.location.search returns everything after '?' in URL
+        // In this case: "?post_id=123"
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('post_id');
 
@@ -26,19 +44,23 @@ export async function loadCommentPage(container) {
             throw new Error('Post ID is required');
         }
 
-        // 3. Initialize the comment page
         await initializeCommentPage(postId);
 
-        // 4. Initialize infinite scroll
+        await initializeCommentPage(postId);
+
         initializeInfiniteScroll();
 
-        // 5 like/dislike functionality
         initializeLikeDislike();
 
     } catch (error) {
         console.error('Error loading comment page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
     }
+}
+
+function cleanupCommentListeners() {
+    commentCleanupFunctions.forEach(cleanup => cleanup());
+    commentCleanupFunctions = [];
 }
 
 async function initializeCommentPage(postId) {
@@ -51,10 +73,9 @@ async function initializeCommentPage(postId) {
     const response = await fetch(`/api/comment?post_id=${postId}`);
     if (!response.ok) {
         if (response.status === 401) {
-            const nagivationEvent = new CustomEvent('navigate', {
+            window.dispatchEvent(new CustomEvent('navigate', {
                 detail: { path: '/login' }
-            })
-            window.dispatchEvent(nagivationEvent)
+            }));
             return;
         }
         throw new Error('Failed to fetch post and comments');
@@ -74,7 +95,7 @@ async function initializeCommentPage(postId) {
 
 function renderPost(post) {
     const postDetails = document.getElementById('postDetails');
-    postDetails.className = "post"
+    postDetails.className = "post";
     postDetails.innerHTML = `
         <div class="profilInfo">
             <img src="client/images/profil.png" class="profileImg" />
@@ -104,7 +125,6 @@ function renderComments(comments, append = false) {
 }
 
 function createCommentElement(comment) {
-    console.log("comment =>", comment)
     const div = document.createElement('div');
     div.className = 'comment';
     div.innerHTML = `
@@ -131,7 +151,7 @@ function createCommentElement(comment) {
 function initializeCommentForm(postId) {
     const commentForm = document.getElementById('commentForm');
 
-    commentForm.addEventListener('submit', async (e) => {
+    const formSubmitHandler = async (e) => {
         e.preventDefault();
 
         const formData = new FormData(commentForm);
@@ -144,10 +164,9 @@ function initializeCommentForm(postId) {
             });
 
             if (response.status === 401) {
-                const nagivationEvent = new CustomEvent('navigate', {
+                window.dispatchEvent(new CustomEvent('navigate', {
                     detail: { path: '/login' }
-                })
-                window.dispatchEvent(nagivationEvent)
+                }));
                 return;
             }
 
@@ -180,7 +199,12 @@ function initializeCommentForm(postId) {
         } catch (error) {
             console.error('Error posting comment:', error);
         }
-    });
+    };
+
+    commentForm.addEventListener('submit', formSubmitHandler);
+    commentCleanupFunctions.push(() =>
+        commentForm.removeEventListener('submit', formSubmitHandler)
+    );
 }
 
 function initializeInfiniteScroll() {
@@ -194,6 +218,7 @@ function initializeInfiniteScroll() {
     });
 
     observer.observe(loadingContainer);
+    commentCleanupFunctions.push(() => observer.disconnect());
 }
 
 async function loadMoreComments() {
@@ -227,7 +252,7 @@ async function loadMoreComments() {
 }
 
 function initializeLikeDislike() {
-    document.addEventListener('click', async (e) => {
+    const likeDislikeHandler = async (e) => {
         const button = e.target.closest('.action-btn');
         if (!button || button.disabled) return;
 
@@ -239,10 +264,9 @@ function initializeLikeDislike() {
             const response = await fetch(`/api/like-dislike?action=${action}&commentid=${id}&type=${type}`);
 
             if (response.status === 401) {
-                const nagivationEvent = new CustomEvent('navigate', {
+                window.dispatchEvent(new CustomEvent('navigate', {
                     detail: { path: '/login' }
-                })
-                window.dispatchEvent(nagivationEvent)
+                }));
                 return;
             }
 
@@ -250,13 +274,17 @@ function initializeLikeDislike() {
                 throw new Error('Failed to update like/dislike');
             }
 
-            // Update UI
             updateLikeDislikeUI(id, action);
 
         } catch (error) {
             console.error('Error:', error);
         }
-    });
+    };
+
+    document.addEventListener('click', likeDislikeHandler);
+    commentCleanupFunctions.push(() =>
+        document.removeEventListener('click', likeDislikeHandler)
+    );
 }
 
 function updateLikeDislikeUI(id, action) {
@@ -267,33 +295,25 @@ function updateLikeDislikeUI(id, action) {
 
     if (action === "like") {
         if (!likeBtn.classList.contains("liked-btn")) {
-            // Add like
             likeSpan.textContent = Number(likeSpan.textContent) + 1;
             likeBtn.classList.add("liked-btn");
-
-            // Remove dislike if exists
             if (dislikeBtn.classList.contains("liked-btn")) {
                 dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
                 dislikeBtn.classList.remove("liked-btn");
             }
         } else {
-            // Remove like
             likeSpan.textContent = Number(likeSpan.textContent) - 1;
             likeBtn.classList.remove("liked-btn");
         }
     } else {
         if (!dislikeBtn.classList.contains("liked-btn")) {
-            // Add dislike
             dislikeSpan.textContent = Number(dislikeSpan.textContent) + 1;
             dislikeBtn.classList.add("liked-btn");
-
-            // Remove like if exists
             if (likeBtn.classList.contains("liked-btn")) {
                 likeSpan.textContent = Number(likeSpan.textContent) - 1;
                 likeBtn.classList.remove("liked-btn");
             }
         } else {
-            // Remove dislike
             dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
             dislikeBtn.classList.remove("liked-btn");
         }

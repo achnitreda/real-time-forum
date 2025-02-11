@@ -1,5 +1,10 @@
+let headerCleanupFunctions = [];
+
 export async function renderHeader() {
     try {
+
+        cleanupHeaderListeners();
+
         // Check login status
         const response = await fetch('/api/user/status');
         const data = await response.json();
@@ -13,6 +18,11 @@ export async function renderHeader() {
     } catch (error) {
         console.error('Error rendering header:', error);
     }
+}
+
+function cleanupHeaderListeners() {
+    headerCleanupFunctions.forEach(cleanup => cleanup());
+    headerCleanupFunctions = [];
 }
 
 function createHeaderContent() {
@@ -51,16 +61,15 @@ function createHeaderContent() {
 function initializeHeaderForms() {
     const headerForm = document.querySelector('.head form');
 
-    headerForm.addEventListener('submit', async (e) => {
+    const formSubmitHandler = async (e) => {
         e.preventDefault();
         const button = e.submitter;
         const action = button.dataset.action;
 
         if (action === 'posting') {
-            const navigationEvent = new CustomEvent('navigate', {
+            window.dispatchEvent(new CustomEvent('navigate', {
                 detail: { path: '/posting' }
-            });
-            window.dispatchEvent(navigationEvent);
+            }));
         } else if (action === 'logout') {
             try {
                 const response = await fetch('/api/logout', {
@@ -68,14 +77,19 @@ function initializeHeaderForms() {
                 });
 
                 if (response.ok) {
-                    const navigationEvent = new CustomEvent('navigate', {
+                    window.dispatchEvent(new CustomEvent('navigate', {
                         detail: { path: '/login' }
-                    });
-                    window.dispatchEvent(navigationEvent);
+                    }));
                 }
             } catch (error) {
                 console.error('Logout error:', error);
             }
         }
-    });
+    };
+
+    headerForm.addEventListener('submit', formSubmitHandler);
+
+    headerCleanupFunctions.push(() =>
+        headerForm.removeEventListener('submit', formSubmitHandler)
+    );
 }

@@ -1,29 +1,40 @@
-import { styleManager } from "../../api/style-manager.js";
-
 let currentOffset = 0;
 let isLoading = false;
 let hasMorePosts = true;
 let currentFilter = '';
+let cleanupFunctions = [];
+
+// CHECK IF FILTERING WITH ALL POSTS WORKING
 
 export async function loadHomePage(container) {
     try {
-        // 1 Load HTML & CSS
-        const htmlResponse = await fetch('/client/pages/home/home.html');
-        const html = await htmlResponse.text();
+        // 0 Clean up previous event listeners
+        cleanupAllListeners();
 
-        // Load styles using style manager
-        await styleManager.loadStyles(
-            'home',
-            '/client/pages/home/home.css'
-        );
-
-        container.innerHTML = html;
+        // 1 Create and insert HTML structure
+        container.innerHTML = `
+            <div class="container">
+                <div class="scrollmenu" id="filterContainer">
+                    <div class="filter" id="categoryFilter"></div>
+                </div>
+                <main class="main-content">
+                    <div class="Posts" id="postsContainer"></div>
+                    <div class="loading" id="loadingContainer">
+                        <div class="spinner"></div>
+                        Loading more posts...
+                    </div>
+                </main>
+            </div>
+        `;
 
         // 2 Initialize the home page
         await initializeHome();
 
         // Add scroll listener
         window.addEventListener('scroll', debounce(handleScroll, 250));
+        cleanupFunctions.push(() =>
+            window.removeEventListener('scroll', debounce(handleScroll, 250))
+        );
 
         // 3 Initialize filter handlers
         initializeFilters();
@@ -35,6 +46,11 @@ export async function loadHomePage(container) {
         console.error('Error loading home page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
     }
+}
+
+function cleanupAllListeners() {
+    cleanupFunctions.forEach(cleanup => cleanup())
+    cleanupFunctions = [];
 }
 
 async function initializeHome() {
@@ -55,17 +71,96 @@ async function initializeHome() {
 function initializeFilters() {
     const filterContainer = document.getElementById('filterContainer');
 
-    filterContainer.addEventListener('change', async (e) => {
+    const filterChangeHandler = async (e) => {
         if (e.target.classList.contains('filteraction')) {
-            // Reset state for new filter
             currentOffset = 0;
             hasMorePosts = true;
             currentFilter = e.target.value;
-
-            // Load filtered posts
             await loadPosts(false, true);
         }
+    };
+
+    filterContainer.addEventListener('change', filterChangeHandler);
+    cleanupFunctions.push(() =>
+        filterContainer.removeEventListener('change', filterChangeHandler)
+    );
+}
+
+function initializeLikeDislike() {
+    const likeDislikeHandler = async (e) => {
+        const button = e.target.closest('.action-btn');
+        if (!button || button.disabled) return;
+
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+        const type = button.dataset.type;
+
+        try {
+            const response = await fetch(`/api/like-dislike?action=${action}&commentid=${id}&type=${type}`);
+
+            if (response.status === 401) {
+                window.dispatchEvent(new CustomEvent('navigate', {
+                    detail: { path: '/login' }
+                }));
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to update like/dislike');
+            }
+
+            updateLikeDislikeUI(id, action);
+
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    };
+
+    document.addEventListener('click', likeDislikeHandler);
+    cleanupFunctions.push(() => {
+        document.removeEventListener('click', likeDislikeHandler);
     });
+}
+
+function updateLikeDislikeUI(id, action) {
+    const likeSpan = document.querySelector(`#like_post-${id}`);
+    const dislikeSpan = document.querySelector(`#dislike_post-${id}`);
+    const likeBtn = likeSpan.parentElement;
+    const dislikeBtn = dislikeSpan.parentElement;
+
+    if (action === "like") {
+        if (!likeBtn.classList.contains("liked-btn")) {
+            // Add like
+            likeSpan.textContent = Number(likeSpan.textContent) + 1;
+            likeBtn.classList.add("liked-btn");
+
+            // Remove dislike if exists
+            if (dislikeBtn.classList.contains("liked-btn")) {
+                dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
+                dislikeBtn.classList.remove("liked-btn");
+            }
+        } else {
+            // Remove like
+            likeSpan.textContent = Number(likeSpan.textContent) - 1;
+            likeBtn.classList.remove("liked-btn");
+        }
+    } else {
+        if (!dislikeBtn.classList.contains("liked-btn")) {
+            // Add dislike
+            dislikeSpan.textContent = Number(dislikeSpan.textContent) + 1;
+            dislikeBtn.classList.add("liked-btn");
+
+            // Remove like if exists
+            if (likeBtn.classList.contains("liked-btn")) {
+                likeSpan.textContent = Number(likeSpan.textContent) - 1;
+                likeBtn.classList.remove("liked-btn");
+            }
+        } else {
+            // Remove dislike
+            dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
+            dislikeBtn.classList.remove("liked-btn");
+        }
+    }
 }
 
 async function loadPosts(append = false, isFilter = false) {
@@ -85,10 +180,9 @@ async function loadPosts(append = false, isFilter = false) {
 
         if (!response.ok) {
             if (response.status === 401) {
-                const nagivationEvent = new CustomEvent('navigate', {
+                window.dispatchEvent(new CustomEvent('navigate', {
                     detail: { path: '/login' }
-                })
-                window.dispatchEvent(nagivationEvent)
+                }));
                 return;
             }
             throw new Error('Failed to fetch posts');
@@ -134,7 +228,6 @@ async function loadPosts(append = false, isFilter = false) {
 
         // Update loading visibility
         loadingContainer.style.display = hasMorePosts ? 'block' : 'none';
-
     } catch (error) {
         console.error('Error loading posts:', error);
         const postsContainer = document.getElementById('postsContainer');
@@ -150,15 +243,6 @@ async function loadPosts(append = false, isFilter = false) {
     }
 }
 
-function resetFilter() {
-    currentFilter = '';
-    currentOffset = 0;
-    hasMorePosts = true;
-    const radioButtons = document.querySelectorAll('.filteraction');
-    radioButtons.forEach(radio => radio.checked = false);
-    loadPosts(false, true);
-}
-
 function createPostElement(post, isLoggedIn) {
     const postDiv = document.createElement('div');
     postDiv.className = 'post';
@@ -172,7 +256,7 @@ function createPostElement(post, isLoggedIn) {
         </div>
         <h4>${post.Title}</h4>
         <p class="content">${post.Content}</p>
-    ${post.ImgBase64 ? `<img src="data:image/*;base64,${post.ImgBase64}" alt="Post image" class="post-image"/>` : ''}
+        ${post.ImgBase64 ? `<img src="data:image/*;base64,${post.ImgBase64}" alt="Post image" class="post-image"/>` : ''}
         <div class="categories">
             ${post.Category.map(cat => `
                 <span class="category" data-category="${cat}">
@@ -195,7 +279,7 @@ function createPostElement(post, isLoggedIn) {
                 <i class="fas fa-thumbs-down"></i>
                 <span id="dislike_post-${post.ID}">${post.Dislikes}</span>
             </button>
-           <button class="comment-btn" data-post-id="${post.ID}">
+            <button class="comment-btn" data-post-id="${post.ID}">
                 <i class="fas fa-comment"></i>
                 <span>${post.NbComment}</span>
             </button>
@@ -204,26 +288,32 @@ function createPostElement(post, isLoggedIn) {
 
     const categories = postDiv.querySelectorAll('.category');
     categories.forEach(categorySpan => {
-        categorySpan.addEventListener('click', () => {
+        const categoryClickHandler = () => {
             const category = categorySpan.dataset.category;
             handleCategoryClick(category);
-        });
+        };
+        categorySpan.addEventListener('click', categoryClickHandler);
+        cleanupFunctions.push(() =>
+            categorySpan.removeEventListener('click', categoryClickHandler)
+        );
     });
 
     const commentBtn = postDiv.querySelector('.comment-btn');
-    commentBtn.addEventListener('click', () => {
+    const commentClickHandler = () => {
         if (!isLoggedIn) {
-            const nagivationEvent = new CustomEvent('navigate', {
+            window.dispatchEvent(new CustomEvent('navigate', {
                 detail: { path: '/login' }
-            })
-            window.dispatchEvent(nagivationEvent)
+            }));
         } else {
-            const nagivationEvent = new CustomEvent('navigate', {
+            window.dispatchEvent(new CustomEvent('navigate', {
                 detail: { path: `/comment?post_id=${post.ID}` }
-            })
-            window.dispatchEvent(nagivationEvent)
+            }));
         }
-    });
+    };
+    commentBtn.addEventListener('click', commentClickHandler);
+    cleanupFunctions.push(() =>
+        commentBtn.removeEventListener('click', commentClickHandler)
+    );
 
     return postDiv;
 }
@@ -232,7 +322,7 @@ function updateCategories(categories, isLoggedIn) {
     const filterContainer = document.getElementById('filterContainer');
     let html = '<div class="filter">';
 
-    // Add "All Posts" option as the first filter
+    // Add "All Posts" option
     html += `
         <label>
             <input type="radio" class="filteraction" name="filter" value="" checked />
@@ -264,22 +354,6 @@ function updateCategories(categories, isLoggedIn) {
 
     html += '</div>';
     filterContainer.innerHTML = html;
-
-    // Add click handler for the "All Posts" option
-    const allPostsRadio = filterContainer.querySelector('input[value=""]');
-    allPostsRadio.addEventListener('change', resetFilter);
-}
-
-function handleScroll() {
-    console.log('Scroll handler running');
-    if (isLoading || !hasMorePosts) return;
-
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const documentHeight = document.documentElement.scrollHeight;
-
-    if (scrollPosition >= documentHeight - 500) {
-        loadPosts(true);
-    }
 }
 
 function handleCategoryClick(category) {
@@ -294,88 +368,26 @@ function handleCategoryClick(category) {
     }
 }
 
-function initializeLikeDislike() {
-    document.addEventListener('click', async (e) => {
-        const button = e.target.closest('.action-btn');
-        if (!button || button.disabled) return;
+function handleScroll() {
+    // console.log('Scroll handler running');
+    if (isLoading || !hasMorePosts) return;
 
-        const id = button.dataset.id;
-        const action = button.dataset.action;
-        const type = button.dataset.type;
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const documentHeight = document.documentElement.scrollHeight;
 
-        try {
-            const response = await fetch(`/api/like-dislike?action=${action}&commentid=${id}&type=${type}`);
-
-            if (response.status === 401) {
-                const nagivationEvent = new CustomEvent('navigate', {
-                    detail: { path: '/login' }
-                })
-                window.dispatchEvent(nagivationEvent)
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error('Failed to update like/dislike');
-            }
-
-            // Update UI
-            updateLikeDislikeUI(id, action);
-
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    });
-}
-
-function updateLikeDislikeUI(id, action) {
-    const likeSpan = document.querySelector(`#like_post-${id}`);
-    const dislikeSpan = document.querySelector(`#dislike_post-${id}`);
-    const likeBtn = likeSpan.parentElement;
-    const dislikeBtn = dislikeSpan.parentElement;
-
-    if (action === "like") {
-        if (!likeBtn.classList.contains("liked-btn")) {
-            // Add like
-            likeSpan.textContent = Number(likeSpan.textContent) + 1;
-            likeBtn.classList.add("liked-btn");
-
-            // Remove dislike if exists
-            if (dislikeBtn.classList.contains("liked-btn")) {
-                dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
-                dislikeBtn.classList.remove("liked-btn");
-            }
-        } else {
-            // Remove like
-            likeSpan.textContent = Number(likeSpan.textContent) - 1;
-            likeBtn.classList.remove("liked-btn");
-        }
-    } else {
-        if (!dislikeBtn.classList.contains("liked-btn")) {
-            // Add dislike
-            dislikeSpan.textContent = Number(dislikeSpan.textContent) + 1;
-            dislikeBtn.classList.add("liked-btn");
-
-            // Remove like if exists
-            if (likeBtn.classList.contains("liked-btn")) {
-                likeSpan.textContent = Number(likeSpan.textContent) - 1;
-                likeBtn.classList.remove("liked-btn");
-            }
-        } else {
-            // Remove dislike
-            dislikeSpan.textContent = Number(dislikeSpan.textContent) - 1;
-            dislikeBtn.classList.remove("liked-btn");
-        }
+    if (scrollPosition >= documentHeight - 500) {
+        loadPosts(true);
     }
 }
 
 const debounce = (func, wait = 0) => {
-    let timeoutID
+    let timeoutID;
     return (...args) => {
         if (timeoutID) {
             clearTimeout(timeoutID);
         }
         timeoutID = setTimeout(() => {
-            func(...args)
-        }, wait)
-    }
-}
+            func(...args);
+        }, wait);
+    };
+};

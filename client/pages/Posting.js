@@ -1,20 +1,40 @@
-import { styleManager } from "../../api/style-manager.js";
+let postingCleanupFunctions = [];
 
 export async function loadPostingPage(container) {
     try {
-        // 1. Load HTML & CSS
-        const htmlResponse = await fetch('/client/pages/posting/posting.html');
-        const html = await htmlResponse.text();
 
-        // Load styles using style manager
-        await styleManager.loadStyles(
-            'posting',
-            '/client/pages/posting/posting.css'
-        );
+        cleanupPostingListeners()
 
-        container.innerHTML = html;
+        container.innerHTML = `
+            <div class="form-container-post">
+                <form class="myform-post" id="postingForm">
+                    <h1>Create a New Post</h1>
+                    <div id="errorContainer"></div>
 
-        // 2. Initialize form
+                    <input
+                        class="input-post"
+                        type="text"
+                        name="title"
+                        placeholder="Title"
+                        required
+                    />
+
+                    <div class="categorie" id="categoriesContainer">
+                    </div>
+
+                    <textarea
+                        name="content"
+                        placeholder="Write your content here..."
+                        required
+                    ></textarea>
+
+                    <input type="file" id="file" name="file" accept="image/*" />
+
+                    <button class="input btn" type="submit">Post</button>
+                </form>
+            </div>
+        `;
+
         await initializePostingForm();
 
     } catch (error) {
@@ -23,12 +43,17 @@ export async function loadPostingPage(container) {
     }
 }
 
+function cleanupPostingListeners() {
+    postingCleanupFunctions.forEach(cleanup => cleanup());
+    postingCleanupFunctions = [];
+}
+
+
 async function initializePostingForm() {
     try {
         // Get categories
         const response = await fetch('/api/posting');
         const data = await response.json();
-        console.log('Categories response:', data);
 
         // Populate categories
         const categoriesContainer = document.getElementById('categoriesContainer');
@@ -46,8 +71,10 @@ async function initializePostingForm() {
         const errorContainer = document.getElementById('errorContainer');
         const fileInput = document.getElementById('file');
 
-        // Add file preview
-        fileInput.addEventListener('change', (e) => {
+        // Add file preview handler
+        const fileChangeHandler = (e) => {
+            // Get the first file from the selected files 
+            // because we can select a lot of files
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
@@ -55,28 +82,31 @@ async function initializePostingForm() {
                 preview.id = 'imagePreview';
                 preview.className = 'image-preview';
 
+                // When file is loaded into memory
                 reader.onload = (e) => {
+                    // e.target.result contains the base64 data URL
                     preview.src = e.target.result;
-                    const existingPreview = document.getElementById('imagePreview');
-                    if (existingPreview) {
-                        existingPreview.remove();
-                    }
+
+                    const oldPreview = document.getElementById('imagePreview');
+                    if (oldPreview) oldPreview.remove();
                     fileInput.parentNode.insertBefore(preview, fileInput.nextSibling);
                 };
-
+                // Converts file to base64 data URL
                 reader.readAsDataURL(file);
             }
-        });
+        }
+
+        fileInput.addEventListener('change', fileChangeHandler);
 
         // Handle form submission
-        postingForm.addEventListener('submit', async (e) => {
+        const formSubmitHandler = async (e) => {
             e.preventDefault();
             errorContainer.textContent = '';
 
             try {
                 const formData = new FormData(postingForm);
 
-                // Check if at least one category is selected
+                // Validate categories
                 if (!formData.getAll('categories').length) {
                     throw new Error('Please select at least one category');
                 }
@@ -93,16 +123,22 @@ async function initializePostingForm() {
                 }
 
                 // Redirect to home page on success
-                const nagivationEvent = new CustomEvent('navigate', {
+                window.dispatchEvent(new CustomEvent('navigate', {
                     detail: { path: '/' }
-                })
-                window.dispatchEvent(nagivationEvent)
+                }));
 
             } catch (error) {
                 errorContainer.textContent = error.message;
                 errorContainer.style.color = 'red';
             }
-        });
+        };
+
+        postingForm.addEventListener('submit', formSubmitHandler);
+
+        postingCleanupFunctions.push(
+            () => fileInput.removeEventListener('change', fileChangeHandler),
+            () => postingForm.removeEventListener('submit', formSubmitHandler)
+        );
 
     } catch (error) {
         console.error('Error initializing posting form:', error);
