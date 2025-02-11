@@ -15,8 +15,11 @@ export async function renderHeader() {
         if (data.isLoggedIn) {
             initializeHeaderForms();
         }
+
+        return () => cleanupHeaderListeners();
     } catch (error) {
         console.error('Error rendering header:', error);
+        return () => cleanupHeaderListeners();
     }
 }
 

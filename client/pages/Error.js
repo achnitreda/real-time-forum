@@ -21,6 +21,8 @@ export async function loadErrorPage(container, errorData) {
 
         initializeErrorPage(errorData);
 
+        return () => cleanupErrorListeners();
+
     } catch (error) {
         console.error('Error loading error page:', error);
         container.innerHTML = `
@@ -29,6 +31,7 @@ export async function loadErrorPage(container, errorData) {
                 <p>Something went wrong. Please try again later.</p>
             </div>
         `;
+        return () => cleanupErrorListeners();
     }
 }
 

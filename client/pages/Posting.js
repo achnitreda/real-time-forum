@@ -37,9 +37,13 @@ export async function loadPostingPage(container) {
 
         await initializePostingForm();
 
+        return () => cleanupPostingListeners();
+
     } catch (error) {
         console.error('Error loading posting page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+
+        return () => cleanupPostingListeners();
     }
 }
 
@@ -57,6 +61,9 @@ async function initializePostingForm() {
 
         // Populate categories
         const categoriesContainer = document.getElementById('categoriesContainer');
+        if (!data.categories || !data.categories.length) {
+            throw new Error('No categories available');
+        }
         data.categories.forEach(category => {
             const label = document.createElement('label');
             label.innerHTML = `
@@ -77,6 +84,15 @@ async function initializePostingForm() {
             // because we can select a lot of files
             const file = e.target.files[0];
             if (file) {
+
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    errorContainer.textContent = 'File size must be less than 5MB';
+                    errorContainer.style.color = 'red';
+                    fileInput.value = '';
+                    return;
+                }
+
                 const reader = new FileReader();
                 const preview = document.createElement('img');
                 preview.id = 'imagePreview';
@@ -115,6 +131,13 @@ async function initializePostingForm() {
                     method: 'POST',
                     body: formData
                 });
+
+                if (response.status === 401) {
+                    window.dispatchEvent(new CustomEvent('navigate', {
+                        detail: { path: '/login' }
+                    }));
+                    return;
+                }
 
                 const result = await response.json();
 

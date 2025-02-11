@@ -82,9 +82,13 @@ export async function loadRegisterPage(container) {
         `;
 
         initializeRegister();
+
+        return () => cleanupRegisterListeners();
     } catch (error) {
         console.error('Error loading register page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+
+        return () => cleanupRegisterListeners();
     }
 }
 
@@ -137,10 +141,9 @@ function initializeRegister() {
                 throw new Error(data.error || 'Registration failed');
             }
 
-            const navigationEvent = new CustomEvent('navigate', {
+            window.dispatchEvent(new CustomEvent('navigate', {
                 detail: { path: '/login' }
-            });
-            window.dispatchEvent(navigationEvent);
+            }));
         } catch (error) {
             errorMessage.textContent = error.message;
             errorMessage.style.display = 'block';

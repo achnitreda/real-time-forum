@@ -46,15 +46,17 @@ export async function loadCommentPage(container) {
 
         await initializeCommentPage(postId);
 
-        await initializeCommentPage(postId);
-
         initializeInfiniteScroll();
 
         initializeLikeDislike();
 
+        return () => cleanupCommentListeners();
+
     } catch (error) {
         console.error('Error loading comment page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+
+        return () => cleanupCommentListeners();
     }
 }
 
@@ -218,7 +220,10 @@ function initializeInfiniteScroll() {
     });
 
     observer.observe(loadingContainer);
-    commentCleanupFunctions.push(() => observer.disconnect());
+    commentCleanupFunctions.push(() => {
+        observer.disconnect();
+        observer.unobserve(loadingContainer);
+    });
 }
 
 async function loadMoreComments() {

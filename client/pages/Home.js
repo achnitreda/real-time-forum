@@ -4,8 +4,6 @@ let hasMorePosts = true;
 let currentFilter = '';
 let cleanupFunctions = [];
 
-// CHECK IF FILTERING WITH ALL POSTS WORKING
-
 export async function loadHomePage(container) {
     try {
         // 0 Clean up previous event listeners
@@ -31,9 +29,10 @@ export async function loadHomePage(container) {
         await initializeHome();
 
         // Add scroll listener
-        window.addEventListener('scroll', debounce(handleScroll, 250));
+        const debouncedScroll = debounce(handleScroll, 250);
+        window.addEventListener('scroll', debouncedScroll);
         cleanupFunctions.push(() =>
-            window.removeEventListener('scroll', debounce(handleScroll, 250))
+            window.removeEventListener('scroll', debouncedScroll)
         );
 
         // 3 Initialize filter handlers
@@ -42,9 +41,13 @@ export async function loadHomePage(container) {
         // 4 like/dislike functionality
         initializeLikeDislike();
 
+        // Return cleanup function
+        return () => cleanupAllListeners();
+
     } catch (error) {
         console.error('Error loading home page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+        return () => cleanupAllListeners();
     }
 }
 

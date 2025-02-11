@@ -1,11 +1,3 @@
-import { loadCommentPage } from "./pages/Comment.js";
-import { loadHomePage } from "./pages/Home.js";
-import { loadLoginPage } from "./pages/Login.js";
-import { loadRegisterPage } from "./pages/Register.js";
-import { loadErrorPage } from "./pages/Error.js";
-import { renderHeader } from "./components/Header.js";
-import { loadPostingPage } from "./pages/Posting.js";
-
 // Current page cleanup function
 let currentCleanupFunction = null;
 
@@ -25,13 +17,22 @@ async function navigateToPage(path) {
     await router();
 }
 
+async function cleanupCurrentPage() {
+    if (currentCleanupFunction) {
+        try {
+            await currentCleanupFunction();
+        } catch (error) {
+            console.error('Error during cleanup:', error);
+        } finally {
+            currentCleanupFunction = null;
+        }
+    }
+}
+
 async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
     try {
         // Clean up previous page if needed
-        if (currentCleanupFunction) {
-            await currentCleanupFunction();
-            currentCleanupFunction = null;
-        }
+        await cleanupCurrentPage();
 
         // Clear previous content
         app.innerHTML = '';
@@ -43,15 +44,19 @@ async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
 
         // Show header if needed
         if (shouldShowHeader) {
+            const { renderHeader } = await import("./components/Header.js");
             await renderHeader();
         }
 
         // Load new page
-        const cleanup = await loadPage(app);
+        const result = await loadPage(app);
 
         // Store cleanup function if provided
-        if (typeof cleanup === 'function') {
-            currentCleanupFunction = cleanup;
+        if (typeof result === 'function') {
+            currentCleanupFunction = result;
+        } else if (result && typeof result.cleanup === 'function') {
+            // Handle if the page returns an object with a cleanup method
+            currentCleanupFunction = () => result.cleanup();
         }
     } catch (error) {
         console.error('Error in handlePageLoad:', error);
@@ -90,21 +95,27 @@ async function router() {
         switch (currentPath) {
             case '/':
             case '/home':
+                const { loadHomePage } = await import("./pages/Home.js");
                 await handlePageLoad(app, loadHomePage, true);
                 break;
             case '/login':
+                const { loadLoginPage } = await import("./pages/Login.js");
                 await handlePageLoad(app, loadLoginPage, false);
                 break;
             case '/register':
+                const { loadRegisterPage } = await import("./pages/Register.js");
                 await handlePageLoad(app, loadRegisterPage, false);
                 break;
             case '/posting':
+                const { loadPostingPage } = await import("./pages/Posting.js");
                 await handlePageLoad(app, loadPostingPage, true);
                 break;
             case '/comment':
+                const { loadCommentPage } = await import("./pages/Comment.js");
                 await handlePageLoad(app, loadCommentPage, true);
                 break;
             default:
+                const { loadErrorPage } = await import("./pages/Error.js");
                 await handlePageLoad(
                     app,
                     (app) => loadErrorPage(app, {
@@ -116,6 +127,7 @@ async function router() {
                 );
         }
     } catch (error) {
+        const { loadErrorPage } = await import("./pages/Error.js");
         console.error('Router error:', error);
         await handlePageLoad(
             app,
@@ -129,6 +141,11 @@ async function router() {
     }
 }
 
+// Also clean up when the window is about to unload
+window.addEventListener('beforeunload', () => {
+    cleanupCurrentPage();
+});
+
 // Event Listeners
 const eventListeners = {
     init() {
@@ -136,7 +153,9 @@ const eventListeners = {
         document.addEventListener('DOMContentLoaded', router);
 
         // Handle browser back/forward buttons
-        window.addEventListener('popstate', router);
+        window.addEventListener('popstate', () => {
+            cleanupCurrentPage().then(() => router());
+        });
 
         // Handle custom navigation events
         window.addEventListener('navigate', (e) => {

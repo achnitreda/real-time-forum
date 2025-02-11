@@ -36,9 +36,13 @@ export async function loadLoginPage(container) {
         // Initialize login form
         initializeLoginForm();
 
+        return () => cleanupLoginListeners();
+
     } catch (error) {
         console.error('Error loading login page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+
+        return () => cleanupLoginListeners()
     }
 }
 
