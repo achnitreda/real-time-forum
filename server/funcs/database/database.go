@@ -44,7 +44,7 @@ const (
 	postsTable = `
     CREATE TABLE IF NOT EXISTS posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
         content TEXT,
         user_id INTEGER NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -90,6 +90,37 @@ const (
         FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );`
+
+	userSessionsTable = `
+    CREATE TABLE IF NOT EXISTS user_sessions (
+        user_id INTEGER PRIMARY KEY,
+        is_online BOOLEAN DEFAULT false,
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );`
+
+	privateMessagesTable = `
+    CREATE TABLE IF NOT EXISTS private_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_read BOOLEAN DEFAULT false,
+        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+    );`
+
+	conversationsTable = `
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user1_id INTEGER NOT NULL,
+        user2_id INTEGER NOT NULL,
+        last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user1_id, user2_id),
+        FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE
+    );`
 )
 
 func CreateDB() error {
@@ -115,6 +146,9 @@ func CreateDB() error {
 		{"comments", commentsTable},
 		{"post_interactions", postInteractionsTable},
 		{"comment_interactions", commentInteractionsTable},
+		{"user_sessions", userSessionsTable},
+		{"private_messages", privateMessagesTable},
+		{"conversations", conversationsTable},
 	}
 
 	for _, table := range tables {

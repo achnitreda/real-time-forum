@@ -35,6 +35,10 @@ func main() {
 
 	http.HandleFunc("/api/posting", handlers.Auth(handlers.Posting))
 
+	// Messaging routes
+	http.HandleFunc("/api/messages", handlers.Auth(handlers.MessagingHandler))
+	http.HandleFunc("/api/online-status", handlers.Auth(handlers.UpdateOnlineStatusHandler))
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -42,7 +46,6 @@ func main() {
 		}
 		http.ServeFile(w, r, "../client/index.html")
 	})
-
 
 	fmt.Println("http://localhost:8081/")
 	http.ListenAndServe(":8081", nil)

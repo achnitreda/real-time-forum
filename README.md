@@ -35,7 +35,7 @@ Password-
 ```
 
 ```
-=> likes not working ⛔
+=> xss ⛔
 ```
 
 ```
@@ -57,39 +57,15 @@ client/
 │── app.js
 │── app.css
 │── pages/
-│   │── home/
-│   │   │── index.js
-│   │   │── home.html
-│   │   │── home.css
-│   │
-│   │── login/
-│   │   │── index.js
-│   │   │── login.html
-│   │   │── login.css
-│   │
-│   │── register/
-│   │   │── index.js
-│   │   │── register.html
-│   │   │── register.css
-│   │
-│   │── posting/
-│   │   │── index.js
-│   │   │── posting.html
-│   │   │── posting.css
-│   │
-│   │── comment/
-│   │   │── index.js
-│   │   │── comment.html
-│   │   │── comment.css
-│   │
-│   │── error/
-│       │── index.js
-│       │── error.html
-│       │── error.css
-│
+│   │── Home.js
+│   │── Login.js
+│   │── Register.js
+│   │── Posting.js
+│   │── Comment.js
+│   │── Error.js
+
 │── components/
 │   │── header.js
-│── api/
 │── images/
     │── logo.png
 |server/
@@ -97,19 +73,40 @@ client/
     |
 ```
 
----
-
-```
-- Images handling:
-supporting various types of extensions.
-In this project you have to handle at least JPEG, PNG and GIF types.
-You will have to store the images, it can be done by storing the file/path in the database
-and saving the image in a specific file system.
-
--
-```
-
 ## Docs:
+
+- DATABASE STRUCTURE:
+
+```
+https://claude.site/artifacts/f6ddf655-73fa-4709-b228-582ceaead3b5
+```
+
+- GetConversations function:
+
+```
+==> you're user_id = 5 (Alice)
+
+0 -> private_messages table:
+id | sender_id | receiver_id | content        | sent_at
+1  | 5 (Alice) | 10 (Bob)   | "Hi Bob"      | 10:00
+2  | 10 (Bob)  | 5 (Alice)  | "Hi Alice"    | 10:01
+3  | 5 (Alice) | 10 (Bob)   | "How are you" | 10:02
+4  | 5 (Alice) | 15 (Charlie)| "Hey Charlie" | 10:03
+
+1 -> 'WITH LastMessages' creates a temporary table that:
+LastMessages temporary result:
+other_user_id | last_message   | last_message_time | rn
+10 (Bob)      | "How are you" | 10:02            | 1  <- Most recent with Bob
+10 (Bob)      | "Hi Alice"    | 10:01            | 2  
+10 (Bob)      | "Hi Bob"      | 10:00            | 3
+15 (Charlie)  | "Hey Charlie" | 10:03            | 1  <- Most recent with Charlie
+
+2 - final result
+UserID | Username | LastMessage   | LastMessageTime | IsOnline | UnreadCount
+10     | Bob      | "How are you"| 10:02          | true     | 2
+15     | Charlie  | "Hey Charlie"| 10:03          | false    | 0
+
+```
 
 - clean-up event listeners:
 
@@ -162,4 +159,34 @@ const registerLinkHandler = (e) => {
         detail: { path: '/register' }
     }));
 };
+```
+
+```
+Is there a section designed to show online users?
+-> UpdateUserOnlineStatus
+
+Are the chat users organized by last message sent (just like discord)?
+-> GetConversations
+
+Try and register a new user that does not have chat messages.
+Are the chat users organized in alphabetic order?
+-> GetNewUsers
+
+Try to send a message.
+-> InsertMessage
+
+- Does the message respect the format, by using the users name and the date that the message was sent?
+- Try to open a private conversation, that has more than 10 messages.
+Can you see the last 10 messages only?
+- Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
+Does it use the scroll event to load more messages?
+- Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
+Does it load just 10 messages, without spamming the scroll event (This can be done using the function Throttle)?
+-> GetMessages
+
+## Websocket integration needed for:
+Open two browsers (ex: Chrome and Firefox), log in with different users in each one and with one of them try to send a private message to the other.
+- Did the other user receive a notification?
+Open two browsers (ex: Chrome and Firefox), log in with different users in each one and with one of them try to send a private message to the other.
+- Did the other user receive the message in real time, without refreshing the page?
 ```
