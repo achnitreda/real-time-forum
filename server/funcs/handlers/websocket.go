@@ -125,18 +125,17 @@ func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 			var msg WebSocketMessage
 			if err := json.Unmarshal(p, &msg); err != nil {
 				log.Printf("Error unmarshaling message: %v", err)
-				continue 
-				// Skip this message, wait for next one
-				// Skips invalid message
-    			// Goes back to waiting for next message
+				continue
+				// Skip this message, wait for next one. Skips invalid message
+				// Goes back to waiting for next message
 			}
 
 			// Handle different message types
 			switch msg.Type {
 			case "new_message":
-				// handleNewMessage
+				wm.handleNewMessage(userID, msg.Payload)
 			case "typing":
-				// handleTypingStatus
+				wm.handleTypingStatus(userID, msg.Payload)
 			}
 		}
 	}
@@ -150,4 +149,74 @@ func (wm *WebSocketManager) removeConnection(userID int) {
 		conn.Close()
 		delete(wm.connections, userID)
 	}
+}
+
+func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) {
+	payloadBytes, _ := json.Marshal(payload)
+	var messageData struct {
+		ReceiverID int    `json:"receiver_id"`
+		Content    string `json:"content"`
+	}
+	if err := json.Unmarshal(payloadBytes, &messageData); err != nil {
+		log.Printf("Error unmarshaling message payload: %v", err)
+		return
+	}
+
+	
+
+	// Store message in database
+	_, err := data.InsertMessage(senderID, messageData.ReceiverID, messageData.Content)
+	if err != nil {
+		log.Printf("Error storing message: %v", err)
+		return
+	}
+
+	// Get complete message details
+	messages, err := data.GetMessages(senderID, messageData.ReceiverID, 1, 0)
+	if err != nil || len(messages) == 0 {
+		log.Printf("Error fetching sent message: %v", err)
+		return
+	}
+
+	// Prepare message notification
+	notification := WebSocketMessage{
+		Type:    "new_message",
+		Payload: messages[0],
+	}
+
+	// Send to receiver if online
+	wm.sendToUser(messageData.ReceiverID, notification)
+}
+
+func (wm *WebSocketManager) sendToUser(userID int, msg WebSocketMessage) {
+	wm.mu.RLock()
+	conn, exists := wm.connections[userID]
+	wm.mu.RUnlock()
+
+	if exists {
+		if err := conn.WriteJSON(msg); err != nil {
+			log.Printf("Error sending message to user %d: %v", userID, err)
+		}
+	}
+}
+
+func (wm *WebSocketManager) handleTypingStatus(userID int, payload interface{}) {
+	payloadBytes, _ := json.Marshal(payload)
+	var typingData struct {
+		ReceiverID int  `json:"receiver_id"`
+		IsTyping   bool `json:"is_typing"`
+	}
+	if err := json.Unmarshal(payloadBytes, &typingData); err != nil {
+		return
+	}
+
+	notification := WebSocketMessage{
+		Type: "typing_status",
+		Payload: map[string]interface{}{
+			"user_id":   userID,
+			"is_typing": typingData.IsTyping,
+		},
+	}
+
+	wm.sendToUser(typingData.ReceiverID, notification)
 }

@@ -35,10 +35,6 @@ Password-
 ```
 
 ```
-=> xss ⛔
-```
-
-```
 - private messages : ⛔
 Because it should be in the landing page I need at least to create it UI
 => implement it just like the other real-time-forum
@@ -48,6 +44,7 @@ Because it should be in the landing page I need at least to create it UI
 - the new added feature in this project is private messages
 - that we will use |websockets| in it
 - send emojis to each other test it ??
+- xss ⛔
 - notif: A user must be able to see the notifications in every page of the project
 ```
 
@@ -163,7 +160,7 @@ const registerLinkHandler = (e) => {
 
 ```
 Is there a section designed to show online users?
--> UpdateUserOnlineStatus
+-> UpdateUserOnlineStatus | broadcastOnlineStatus
 
 Are the chat users organized by last message sent (just like discord)?
 -> GetConversations
@@ -184,9 +181,10 @@ Does it use the scroll event to load more messages?
 Does it load just 10 messages, without spamming the scroll event (This can be done using the function Throttle)?
 -> GetMessages
 
-## Websocket integration needed for:
 Open two browsers (ex: Chrome and Firefox), log in with different users in each one and with one of them try to send a private message to the other.
 - Did the other user receive a notification?
+
 Open two browsers (ex: Chrome and Firefox), log in with different users in each one and with one of them try to send a private message to the other.
 - Did the other user receive the message in real time, without refreshing the page?
+-> handleNewMessage ->  sendToUser
 ```
