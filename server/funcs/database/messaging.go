@@ -49,7 +49,7 @@ func InsertMessage(senderID, receiverID int, content string) (int, error) {
 	_, err = tx.Exec(`
 	INSERT INTO conversations (user1_id, user2_id, last_message_at) 
     VALUES (?, ?, CURRENT_TIMESTAMP)
-	ON CONFILCT (user1_id, user2_id)
+	ON CONFLICT (user1_id, user2_id)
 	DO UPDATE SET last_message_at = CURRENT_TIMESTAMP
 	`, senderID, receiverID)
 	if err != nil {

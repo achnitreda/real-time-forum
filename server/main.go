@@ -39,7 +39,7 @@ func main() {
 	http.HandleFunc("/api/messages", handlers.Auth(handlers.MessagingHandler))
 	http.HandleFunc("/api/online-status", handlers.Auth(handlers.UpdateOnlineStatusHandler))
 
-	http.HandleFunc("/ws", handlers.HandleWebSocket)
+	http.HandleFunc("/api/ws", handlers.HandleWebSocket)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {

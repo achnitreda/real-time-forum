@@ -66,14 +66,14 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wm *WebSocketManager) registerConnection(userID int, conn *websocket.Conn) {
-	wm.mu.Lock()
-	defer wm.mu.Lock()
+    wm.mu.Lock()
+    defer wm.mu.Unlock()
 
-	if existingConn, exists := wm.connections[userID]; exists {
-		existingConn.Close()
-	}
+    if existingConn, exists := wm.connections[userID]; exists {
+        existingConn.Close()
+    }
 
-	wm.connections[userID] = conn
+    wm.connections[userID] = conn
 }
 
 func (wm *WebSocketManager) broadcastOnlineStatus(userID int, isOnline bool) {
@@ -161,8 +161,6 @@ func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) 
 		log.Printf("Error unmarshaling message payload: %v", err)
 		return
 	}
-
-	
 
 	// Store message in database
 	_, err := data.InsertMessage(senderID, messageData.ReceiverID, messageData.Content)

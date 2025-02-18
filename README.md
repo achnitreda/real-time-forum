@@ -37,16 +37,16 @@ Password-
 ```
 - private messages : ⛔
 Because it should be in the landing page I need at least to create it UI
-=> implement it just like the other real-time-forum
-```
+=> implement it just like the other real-time-forum.
 
-```
 - the new added feature in this project is private messages
 - that we will use |websockets| in it
 - send emojis to each other test it ??
 - xss ⛔
 - notif: A user must be able to see the notifications in every page of the project
 ```
+
+## Docs:
 
 ```
 client/
@@ -69,8 +69,6 @@ client/
     |__ main.go
     |
 ```
-
-## Docs:
 
 - DATABASE STRUCTURE:
 
