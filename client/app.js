@@ -77,7 +77,7 @@ async function router() {
 
     try {
         const isAuthenticated = await checkAuthStatus();
-        const protectedRoutes = ['/', '/home', '/posting', '/comment'];
+        const protectedRoutes = ['/', '/home', '/posting', '/comment', '/messages'];
         const authRoutes = ['/login', '/register'];
 
         // Handle auth redirects
@@ -113,6 +113,10 @@ async function router() {
             case '/comment':
                 const { loadCommentPage } = await import("./pages/Comment.js");
                 await handlePageLoad(app, loadCommentPage, true);
+                break;
+            case '/messages':
+                const { loadMessagesPage } = await import("./pages/Messages.js");
+                await handlePageLoad(app, loadMessagesPage, true);
                 break;
             default:
                 const { loadErrorPage } = await import("./pages/Error.js");

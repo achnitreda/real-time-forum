@@ -67,23 +67,26 @@ func InsertMessage(senderID, receiverID int, content string) (int, error) {
 
 func GetMessages(userID, otherUserID, limit, offset int) ([]Message, error) {
 	rows, err := Db.Query(`
-	SELECT 
-			pm.id,
-			pm.sender_id,
-			pm.receiver_id,
-			pm.content,
-			pm.sent_at,
-			u.uname as sender_name,
-			pm.is_read
-		FROM private_messages pm
-		JOIN users u ON pm.sender_id = u.id
-		WHERE (pm.sender_id = ? AND pm.receiver_id = ?)
-		   OR (pm.sender_id = ? AND pm.receiver_id = ?)
-		ORDER BY pm.sent_at DESC
-		LIMIT ? OFFSET ?
-	`, userID, otherUserID,
-		otherUserID, userID,
-		limit, offset)
+    WITH messages_ordered AS (
+        SELECT 
+            pm.id,
+            pm.sender_id,
+            pm.receiver_id,
+            pm.content,
+            pm.sent_at,
+            u.uname as sender_name,
+            pm.is_read
+        FROM private_messages pm
+        JOIN users u ON pm.sender_id = u.id
+        WHERE (pm.sender_id = ? AND pm.receiver_id = ?)
+           OR (pm.sender_id = ? AND pm.receiver_id = ?)
+        ORDER BY pm.sent_at DESC
+        LIMIT ? OFFSET ?
+    )
+    SELECT * FROM messages_ordered ORDER BY sent_at ASC
+    `, userID, otherUserID,
+        otherUserID, userID,
+        limit, offset)
 	if err != nil {
 		return nil, err
 	}

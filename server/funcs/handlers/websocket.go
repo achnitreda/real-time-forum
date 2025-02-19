@@ -17,14 +17,14 @@ type WebSocketMessage struct {
 }
 
 type WebSocketManager struct {
-	connections map[int]*websocket.Conn
+	connections map[int][]*websocket.Conn
 
 	mu sync.RWMutex
 }
 
 var (
 	wsManager = &WebSocketManager{
-		connections: make(map[int]*websocket.Conn),
+		connections: make(map[int][]*websocket.Conn),
 	}
 
 	upgrader = websocket.Upgrader{
@@ -66,14 +66,15 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wm *WebSocketManager) registerConnection(userID int, conn *websocket.Conn) {
-    wm.mu.Lock()
-    defer wm.mu.Unlock()
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
 
-    if existingConn, exists := wm.connections[userID]; exists {
-        existingConn.Close()
-    }
+	// Initialize slice if it doesn't exist
+	if _, exists := wm.connections[userID]; !exists {
+		wm.connections[userID] = make([]*websocket.Conn, 0)
+	}
 
-    wm.connections[userID] = conn
+	wm.connections[userID] = append(wm.connections[userID], conn)
 }
 
 func (wm *WebSocketManager) broadcastOnlineStatus(userID int, isOnline bool) {
@@ -92,20 +93,20 @@ func (wm *WebSocketManager) broadcastToAll(msg WebSocketMessage, excludeUserID i
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
 
-	for userID, conn := range wm.connections {
-		if userID != excludeUserID {
-			if err := conn.WriteJSON(msg); err != nil {
-				log.Printf("Error broadcasting to user %d: %v", userID, err)
-			}
-		}
-	}
+	for userID, connections := range wm.connections {
+        if userID != excludeUserID {
+            for _, conn := range connections {
+                if err := conn.WriteJSON(msg); err != nil {
+                    log.Printf("Error broadcasting to user %d: %v", userID, err)
+                }
+            }
+        }
+    }
 }
 
 func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 	defer func() {
-		wm.removeConnection(userID)
-		data.UpdateUserOnlineStatus(userID, false)
-		wm.broadcastOnlineStatus(userID, false)
+		wm.removeConnection(userID,conn)
 	}()
 
 	for {
@@ -141,14 +142,31 @@ func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 	}
 }
 
-func (wm *WebSocketManager) removeConnection(userID int) {
+func (wm *WebSocketManager) removeConnection(userID int, conn *websocket.Conn) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if conn, exists := wm.connections[userID]; exists {
-		conn.Close()
-		delete(wm.connections, userID)
+	connections, exists := wm.connections[userID]
+	if !exists {
+		return
 	}
+
+	// Find and remove the specific connection
+	for i, c := range connections {
+		if c == conn {
+			// Remove this connection from the slice
+			wm.connections[userID] = append(connections[:i], connections[i+1:]...)
+			break
+		}
+	}
+
+	// If no more connections for this user, remove the user entry and update status
+	if len(wm.connections[userID]) == 0 {
+		delete(wm.connections, userID)
+		data.UpdateUserOnlineStatus(userID, false)
+		wm.broadcastOnlineStatus(userID, false)
+	}
+
 }
 
 func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) {
@@ -184,18 +202,22 @@ func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) 
 
 	// Send to receiver if online
 	wm.sendToUser(messageData.ReceiverID, notification)
+	wm.sendToUser(senderID, notification)
 }
 
 func (wm *WebSocketManager) sendToUser(userID int, msg WebSocketMessage) {
 	wm.mu.RLock()
-	conn, exists := wm.connections[userID]
-	wm.mu.RUnlock()
+    connections, exists := wm.connections[userID]
+    wm.mu.RUnlock()
 
 	if exists {
-		if err := conn.WriteJSON(msg); err != nil {
-			log.Printf("Error sending message to user %d: %v", userID, err)
-		}
-	}
+        for _, conn := range connections {
+            if err := conn.WriteJSON(msg); err != nil {
+                log.Printf("Error sending message to user %d: %v", userID, err)
+                wm.removeConnection(userID, conn)
+            }
+        }
+    }
 }
 
 func (wm *WebSocketManager) handleTypingStatus(userID int, payload interface{}) {

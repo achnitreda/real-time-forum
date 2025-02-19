@@ -36,6 +36,14 @@ function createHeaderContent() {
                 <form method="post">
                     <div class="rightBtns">
                         <label>
+                            <i class="fa-regular fa-comments"></i>
+                            <input
+                                type="submit"
+                                class="postbtn"
+                                data-action="messages"
+                            />
+                        </label>
+                        <label>
                             <i class="fa-regular fa-pen-to-square"></i>
                             <input
                                 type="submit"
@@ -69,24 +77,32 @@ function initializeHeaderForms() {
         const button = e.submitter;
         const action = button.dataset.action;
 
-        if (action === 'posting') {
-            window.dispatchEvent(new CustomEvent('navigate', {
-                detail: { path: '/posting' }
-            }));
-        } else if (action === 'logout') {
-            try {
-                const response = await fetch('/api/logout', {
-                    method: 'POST'
-                });
+        switch (action) {
+            case 'posting':
+                window.dispatchEvent(new CustomEvent('navigate', {
+                    detail: { path: '/posting' }
+                }));
+                break;
+            case 'messages':
+                window.dispatchEvent(new CustomEvent('navigate', {
+                    detail: { path: '/messages' }
+                }));
+                break;
+            case 'logout':
+                try {
+                    const response = await fetch('/api/logout', {
+                        method: 'POST'
+                    });
 
-                if (response.ok) {
-                    window.dispatchEvent(new CustomEvent('navigate', {
-                        detail: { path: '/login' }
-                    }));
+                    if (response.ok) {
+                        window.dispatchEvent(new CustomEvent('navigate', {
+                            detail: { path: '/login' }
+                        }));
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
                 }
-            } catch (error) {
-                console.error('Logout error:', error);
-            }
+                break;
         }
     };
 

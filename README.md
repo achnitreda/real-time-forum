@@ -35,15 +35,9 @@ Password-
 ```
 
 ```
-- private messages : ⛔
-Because it should be in the landing page I need at least to create it UI
-=> implement it just like the other real-time-forum.
-
-- the new added feature in this project is private messages
-- that we will use |websockets| in it
-- send emojis to each other test it ??
+- private messages : ✅
+- when shutting server down database has a state on online user. ⛔
 - xss ⛔
-- notif: A user must be able to see the notifications in every page of the project
 ```
 
 ## Docs:
@@ -154,35 +148,4 @@ const registerLinkHandler = (e) => {
         detail: { path: '/register' }
     }));
 };
-```
-
-```
-Is there a section designed to show online users?
--> UpdateUserOnlineStatus | broadcastOnlineStatus
-
-Are the chat users organized by last message sent (just like discord)?
--> GetConversations
-
-Try and register a new user that does not have chat messages.
-Are the chat users organized in alphabetic order?
--> GetNewUsers
-
-Try to send a message.
--> InsertMessage
-
-- Does the message respect the format, by using the users name and the date that the message was sent?
-- Try to open a private conversation, that has more than 10 messages.
-Can you see the last 10 messages only?
-- Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
-Does it use the scroll event to load more messages?
-- Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
-Does it load just 10 messages, without spamming the scroll event (This can be done using the function Throttle)?
--> GetMessages
-
-Open two browsers (ex: Chrome and Firefox), log in with different users in each one and with one of them try to send a private message to the other.
-- Did the other user receive a notification?
-
-Open two browsers (ex: Chrome and Firefox), log in with different users in each one and with one of them try to send a private message to the other.
-- Did the other user receive the message in real time, without refreshing the page?
--> handleNewMessage ->  sendToUser
 ```
