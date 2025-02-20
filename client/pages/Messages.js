@@ -8,6 +8,7 @@ let isLoadingMessages = false;
 let typingTimeout = null;
 let lastScrollPosition = 0
 let currentUserID = null;
+let processedMessages = new Set();
 
 export async function loadMessagesPage(container) {
     try {
@@ -42,14 +43,15 @@ export async function loadMessagesPage(container) {
         `;
 
         // Initialize WebSocket connection
-        WebSocketService.connect();
+        await WebSocketService.connect();
 
-        // Load conversations and new users
-        await loadConversations();
-
+        // initialize listeners
         initializeWebSocketListeners()
         initializeMessageInput()
         initializeScrollListener()
+
+        // Load conversations and new users
+        await loadConversations();
 
         return () => cleanupMessageListeners();
     } catch (error) {
@@ -63,6 +65,7 @@ function cleanupMessageListeners() {
     messageCleanupFunctions.forEach(cleanup => cleanup());
     messageCleanupFunctions = [];
     WebSocketService.disconnect();
+    processedMessages.clear(); 
 }
 
 async function loadConversations() {
@@ -133,6 +136,8 @@ function createConversationElement(conv, isNewUser = false) {
 
 async function loadChat(userId) {
     try {
+        processedMessages.clear(); 
+
         currentChatId = userId;
         currentOffset = 0;
         hasMoreMessages = true;
@@ -198,9 +203,11 @@ function renderMessages(messages, currentUserID, append = false) {
 
     if (append) {
         chatMessages.insertBefore(fragment, chatMessages.firstChild)
+        console.log("append")
     } else {
         chatMessages.appendChild(fragment)
         chatMessages.scrollTop = chatMessages.scrollHeight
+        console.log("la")
     }
 }
 
@@ -227,8 +234,20 @@ function createMessageElement(message, currentUserID) {
 
 function initializeWebSocketListeners() {
     const messageCleanup = WebSocketService.onMessage(message => {
-        if (currentChatId !== null && message.sender_id === currentChatId || message.receiver_id === currentChatId) {
+
+        const messageId = `${message.id}-${message.sender_id}-${message.receiver_id}`;
+
+        // Skip if we've already processed this message
+        if (processedMessages.has(messageId)) {
+            return;
+        }
+
+        processedMessages.add(messageId)
+
+        if (currentChatId !== null &&
+            (message.sender_id === currentChatId || message.receiver_id === currentChatId)) {
             renderMessages([message], currentUserID);
+            console.log("render msg");
         }
         updateConversationList();
     })

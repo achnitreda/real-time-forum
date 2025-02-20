@@ -77,7 +77,6 @@ async function router() {
 
     try {
         const isAuthenticated = await checkAuthStatus();
-        const protectedRoutes = ['/', '/home', '/posting', '/comment', '/messages'];
         const authRoutes = ['/login', '/register'];
 
         // Handle auth redirects
@@ -86,7 +85,7 @@ async function router() {
             return;
         }
 
-        if (!isAuthenticated && protectedRoutes.includes(currentPath)) {
+        if (!isAuthenticated && !authRoutes.includes(currentPath)) {
             await navigateToPage('/login');
             return;
         }

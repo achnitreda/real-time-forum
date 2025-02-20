@@ -59,7 +59,7 @@ export async function loadRegisterPage(container) {
 
         <label for="email">Email</label>
         <input
-        class="inputauth"
+        class="input-auth"
         type="email"
         name="email"
         placeholder="Enter your email"

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -45,6 +46,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("WebSocket connection attempt for user_id: %d", userID)
+
 	// Upgrade connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -56,7 +59,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	wsManager.registerConnection(userID, conn)
 
 	// Update user's online status
-	data.UpdateUserOnlineStatus(userID, true)
+	if err := data.UpdateUserOnlineStatus(userID, true); err != nil {
+		log.Printf("Error updating online status for user_id: %d: %v", userID, err)
+	} else {
+		log.Printf("Successfully updated online status for user_id: %d", userID)
+	}
 
 	// Broadcast online status to other users
 	wsManager.broadcastOnlineStatus(userID, true)
@@ -94,19 +101,19 @@ func (wm *WebSocketManager) broadcastToAll(msg WebSocketMessage, excludeUserID i
 	defer wm.mu.RUnlock()
 
 	for userID, connections := range wm.connections {
-        if userID != excludeUserID {
-            for _, conn := range connections {
-                if err := conn.WriteJSON(msg); err != nil {
-                    log.Printf("Error broadcasting to user %d: %v", userID, err)
-                }
-            }
-        }
-    }
+		if userID != excludeUserID {
+			for _, conn := range connections {
+				if err := conn.WriteJSON(msg); err != nil {
+					log.Printf("Error broadcasting to user %d: %v", userID, err)
+				}
+			}
+		}
+	}
 }
 
 func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 	defer func() {
-		wm.removeConnection(userID,conn)
+		wm.removeConnection(userID, conn)
 	}()
 
 	for {
@@ -137,6 +144,14 @@ func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 				wm.handleNewMessage(userID, msg.Payload)
 			case "typing":
 				wm.handleTypingStatus(userID, msg.Payload)
+			case "reconnect":
+				// Update online status on reconnection
+				if err := data.UpdateUserOnlineStatus(userID, true); err != nil {
+					log.Printf("Error updating online status on reconnect for user_id: %d: %v", userID, err)
+				} else {
+					log.Printf("Successfully updated online status on reconnect for user_id: %d", userID)
+				}
+				wm.broadcastOnlineStatus(userID, true)
 			}
 		}
 	}
@@ -160,11 +175,17 @@ func (wm *WebSocketManager) removeConnection(userID int, conn *websocket.Conn) {
 		}
 	}
 
-	// If no more connections for this user, remove the user entry and update status
+	// If no more connections and it's not a reconnection attempt
 	if len(wm.connections[userID]) == 0 {
 		delete(wm.connections, userID)
-		data.UpdateUserOnlineStatus(userID, false)
-		wm.broadcastOnlineStatus(userID, false)
+		// Add a small delay to prevent race condition with reconnection
+		go func() {
+			time.Sleep(1 * time.Second)
+			if _, exists := wm.connections[userID]; !exists {
+				data.UpdateUserOnlineStatus(userID, false)
+				wm.broadcastOnlineStatus(userID, false)
+			}
+		}()
 	}
 
 }
@@ -202,22 +223,22 @@ func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) 
 
 	// Send to receiver if online
 	wm.sendToUser(messageData.ReceiverID, notification)
-	wm.sendToUser(senderID, notification)
+	wm.sendToUser(senderID,notification)
 }
 
 func (wm *WebSocketManager) sendToUser(userID int, msg WebSocketMessage) {
 	wm.mu.RLock()
-    connections, exists := wm.connections[userID]
-    wm.mu.RUnlock()
+	connections, exists := wm.connections[userID]
+	wm.mu.RUnlock()
 
 	if exists {
-        for _, conn := range connections {
-            if err := conn.WriteJSON(msg); err != nil {
-                log.Printf("Error sending message to user %d: %v", userID, err)
-                wm.removeConnection(userID, conn)
-            }
-        }
-    }
+		for _, conn := range connections {
+			if err := conn.WriteJSON(msg); err != nil {
+				log.Printf("Error sending message to user %d: %v", userID, err)
+				wm.removeConnection(userID, conn)
+			}
+		}
+	}
 }
 
 func (wm *WebSocketManager) handleTypingStatus(userID int, payload interface{}) {

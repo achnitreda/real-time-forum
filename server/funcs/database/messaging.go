@@ -1,6 +1,10 @@
 package forum
 
-import "time"
+import (
+	"database/sql"
+	"log"
+	"time"
+)
 
 type Message struct {
 	ID         int       `json:"id"`
@@ -85,8 +89,8 @@ func GetMessages(userID, otherUserID, limit, offset int) ([]Message, error) {
     )
     SELECT * FROM messages_ordered ORDER BY sent_at ASC
     `, userID, otherUserID,
-        otherUserID, userID,
-        limit, offset)
+		otherUserID, userID,
+		limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -229,14 +233,30 @@ func GetNewUsers(userID int) ([]Conversation, error) {
 }
 
 func UpdateUserOnlineStatus(userID int, isOnline bool) error {
-	_, err := Db.Exec(`
-		INSERT INTO user_sessions (user_id, is_online, last_seen)
-		VALUES (?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT (user_id) 
-		DO UPDATE SET 
-			is_online = ?,
-			last_seen = CURRENT_TIMESTAMP`,
-		userID, isOnline, isOnline,
-	)
+	// First check if user exists in the table
+	var existingUserID int
+	err := Db.QueryRow("SELECT user_id FROM user_sessions WHERE user_id = ?", userID).Scan(&existingUserID)
+
+	if err == sql.ErrNoRows {
+		// User doesn't exist, do insert
+		log.Printf("Inserting new user session for user_id: %d, online: %v", userID, isOnline)
+		_, err = Db.Exec(`
+            INSERT INTO user_sessions (user_id, is_online, last_seen)
+            VALUES (?, ?, CURRENT_TIMESTAMP)`,
+			userID, isOnline)
+	} else if err == nil {
+		// User exists, do update
+		log.Printf("Updating existing user session for user_id: %d, online: %v", userID, isOnline)
+		_, err = Db.Exec(`
+            UPDATE user_sessions 
+            SET is_online = ?, last_seen = CURRENT_TIMESTAMP
+            WHERE user_id = ?`,
+			isOnline, userID)
+	}
+
+	if err != nil {
+		log.Printf("Error in UpdateUserOnlineStatus: %v", err)
+	}
+
 	return err
 }

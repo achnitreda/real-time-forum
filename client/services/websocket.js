@@ -9,45 +9,57 @@ const typingCallbacks = new Set();
 
 export const WebSocketService = {
     connect() {
-        if (ws) return;
-
-        ws = new WebSocket(`ws://${window.location.host}/api/ws`);
-
-        ws.onopen = () => {
-            console.log('WebSocket connected');
-            reconnectAttempts = 0;
-            this.notifyStatusCallbacks(true);
-        };
-
-        ws.onclose = () => {
-            console.log('WebSocket disconnected');
-            ws = null;
-            this.notifyStatusCallbacks(false);
-            this.attemptReconnect();
-        };
-
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                switch (data.type) {
-                    case 'new_message':
-                        messageCallbacks.forEach(callback => callback(data.payload));
-                        break;
-                    case 'online_status':
-                        statusCallbacks.forEach(callback => callback(data.payload));
-                        break;
-                    case 'typing_status':
-                        typingCallbacks.forEach(callback => callback(data.payload));
-                        break;
-                }
-            } catch (error) {
-                console.error('Error processing message:', error);
+        return new Promise((resolve, reject) => {
+            if (ws) {
+                resolve()
+                return;
             }
-        };
+
+            ws = new WebSocket(`ws://${window.location.host}/api/ws`);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                reconnectAttempts = 0;
+                // Send a reconnection message to update online status
+                ws.send(JSON.stringify({
+                    type: 'reconnect',
+                    payload: { is_online: true }
+                }));
+                this.notifyStatusCallbacks(true);
+                resolve()
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                ws = null;
+                this.notifyStatusCallbacks(false);
+                this.attemptReconnect();
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                reject(error)
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    switch (data.type) {
+                        case 'new_message':
+                            messageCallbacks.forEach(callback => callback(data.payload));
+                            break;
+                        case 'online_status':
+                            statusCallbacks.forEach(callback => callback(data.payload));
+                            break;
+                        case 'typing_status':
+                            typingCallbacks.forEach(callback => callback(data.payload));
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Error processing message:', error);
+                }
+            };
+        })
     },
 
     disconnect() {
@@ -72,7 +84,7 @@ export const WebSocketService = {
 
     sendMessage(receiverId, content) {
         if (!ws) return false;
-        
+
         ws.send(JSON.stringify({
             type: 'new_message',
             payload: {
