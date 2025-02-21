@@ -14,13 +14,11 @@ export async function loadMessagesPage(container) {
     try {
         cleanupMessageListeners();
 
-
         // Get current user's ID from auth status
         const response = await fetch('/api/user/status');
         const userData = await response.json();
         currentUserID = userData.userId;
 
-        // Add CSS classes for the messages page
         container.innerHTML = `
             <div class="messages-container">
                 <div class="chat-sidebar">
@@ -53,6 +51,12 @@ export async function loadMessagesPage(container) {
         // Load conversations and new users
         await loadConversations();
 
+        // Restore last active chat if exists
+        const lastActiveChat = sessionStorage.getItem('lastActiveChat');
+        if (lastActiveChat) {
+            await loadChat(parseInt(lastActiveChat))
+        }
+
         return () => cleanupMessageListeners();
     } catch (error) {
         console.error('Error loading messages page:', error);
@@ -65,7 +69,7 @@ function cleanupMessageListeners() {
     messageCleanupFunctions.forEach(cleanup => cleanup());
     messageCleanupFunctions = [];
     WebSocketService.disconnect();
-    processedMessages.clear(); 
+    processedMessages.clear();
 }
 
 async function loadConversations() {
@@ -136,9 +140,10 @@ function createConversationElement(conv, isNewUser = false) {
 
 async function loadChat(userId) {
     try {
-        processedMessages.clear(); 
+        processedMessages.clear();
 
         currentChatId = userId;
+        sessionStorage.setItem('lastActiveChat', userId);
         currentOffset = 0;
         hasMoreMessages = true;
 
