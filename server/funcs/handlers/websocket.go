@@ -2,6 +2,7 @@ package forum
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -19,13 +20,14 @@ type WebSocketMessage struct {
 
 type WebSocketManager struct {
 	connections map[int][]*websocket.Conn
-
-	mu sync.RWMutex
+	tokens      map[int]string
+	mu          sync.RWMutex
 }
 
 var (
 	wsManager = &WebSocketManager{
 		connections: make(map[int][]*websocket.Conn),
+		tokens:      make(map[int]string),
 	}
 
 	upgrader = websocket.Upgrader{
@@ -46,7 +48,27 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("WebSocket connection attempt for user_id: %d", userID)
+	// log.Printf("WebSocket connection attempt for user_id: %d", userID)
+	cookie, _ := r.Cookie("Token")
+	fmt.Println("cookie ->", cookie.Value)
+
+	wsManager.mu.Lock()
+	if existingConns, exists := wsManager.connections[userID]; exists {
+		oldToken := wsManager.tokens[userID]
+		if oldToken != cookie.Value {
+			for _, conn := range existingConns {
+				conn.WriteJSON(WebSocketMessage{
+					Type: "session_expired",
+					Payload: map[string]string{
+						"message": "Session expired due to new login",
+					},
+				})
+				conn.Close()
+			}
+			delete(wsManager.connections, userID)
+		}
+	}
+	wsManager.mu.Unlock()
 
 	// Upgrade connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -56,11 +78,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Register the new connection
-	wsManager.registerConnection(userID, conn)
+	wsManager.registerConnection(userID, conn, cookie.Value)
 
 	// Update user's online status
 	if err := data.UpdateUserOnlineStatus(userID, true); err != nil {
-		log.Printf("Error updating online status for user_id: %d: %v", userID, err)
+		// log.Printf("Error updating online status for user_id: %d: %v", userID, err)
 	} else {
 		log.Printf("Successfully updated online status for user_id: %d", userID)
 	}
@@ -72,7 +94,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	go wsManager.handleMessages(userID, conn)
 }
 
-func (wm *WebSocketManager) registerConnection(userID int, conn *websocket.Conn) {
+func (wm *WebSocketManager) registerConnection(userID int, conn *websocket.Conn, token string) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
@@ -82,6 +104,7 @@ func (wm *WebSocketManager) registerConnection(userID int, conn *websocket.Conn)
 	}
 
 	wm.connections[userID] = append(wm.connections[userID], conn)
+	wm.tokens[userID] = token
 }
 
 func (wm *WebSocketManager) broadcastOnlineStatus(userID int, isOnline bool) {
@@ -130,6 +153,25 @@ func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 		}
 
 		if messageType == websocket.TextMessage {
+
+			// Check token validity before processing
+			wm.mu.RLock()
+			currentToken := wm.tokens[userID]
+			wm.mu.RUnlock()
+
+			u, err := data.GetUserIDFromToken(currentToken)
+			if err != nil {
+				conn.WriteJSON(WebSocketMessage{
+					Type: "session_expired",
+					Payload: map[string]string{
+						"message": "Session expired",
+					},
+				})
+				return
+			}
+			fmt.Println("-->", wm.tokens)
+			fmt.Println("-->", u, currentToken)
+
 			var msg WebSocketMessage
 			if err := json.Unmarshal(p, &msg); err != nil {
 				log.Printf("Error unmarshaling message: %v", err)
@@ -169,7 +211,6 @@ func (wm *WebSocketManager) removeConnection(userID int, conn *websocket.Conn) {
 	// Find and remove the specific connection
 	for i, c := range connections {
 		if c == conn {
-			// Remove this connection from the slice
 			wm.connections[userID] = append(connections[:i], connections[i+1:]...)
 			break
 		}
@@ -178,6 +219,7 @@ func (wm *WebSocketManager) removeConnection(userID int, conn *websocket.Conn) {
 	// If no more connections and it's not a reconnection attempt
 	if len(wm.connections[userID]) == 0 {
 		delete(wm.connections, userID)
+		delete(wm.tokens, userID)
 		// Add a small delay to prevent race condition with reconnection
 		go func() {
 			time.Sleep(1 * time.Second)
@@ -223,7 +265,7 @@ func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) 
 
 	// Send to receiver if online
 	wm.sendToUser(messageData.ReceiverID, notification)
-	wm.sendToUser(senderID,notification)
+	wm.sendToUser(senderID, notification)
 }
 
 func (wm *WebSocketManager) sendToUser(userID int, msg WebSocketMessage) {

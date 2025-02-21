@@ -45,6 +45,9 @@ export const WebSocketService = {
                 try {
                     const data = JSON.parse(event.data);
                     switch (data.type) {
+                        case "session_expired":
+                            this.handleSessionExpired();
+                            break;
                         case 'new_message':
                             messageCallbacks.forEach(callback => callback(data.payload));
                             break;
@@ -60,6 +63,16 @@ export const WebSocketService = {
                 }
             };
         })
+    },
+
+    handleSessionExpired() {
+        this.disconnect();
+
+        document.cookie = "Token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+        window.dispatchEvent(new CustomEvent('navigate', {
+            detail: { path: '/login' }
+        }));
     },
 
     disconnect() {

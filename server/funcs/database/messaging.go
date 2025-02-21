@@ -2,6 +2,7 @@ package forum
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"time"
 )
@@ -26,6 +27,10 @@ type Conversation struct {
 }
 
 func InsertMessage(senderID, receiverID int, content string) (int, error) {
+	if senderID == receiverID {
+		return 0, errors.New("senderID should not equal receiverID")
+	}
+
 	// 1- start transaction
 	tx, err := Db.Begin()
 	if err != nil {

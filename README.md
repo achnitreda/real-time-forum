@@ -201,9 +201,15 @@ Did the other user receive a notification? ✅
 Did the other user receive the message in real time, without refreshing the page? ✅
 
 -> Try to open a private conversation, that has more than 10 messages.
-Can you see the last 10 messages only?
+Can you see the last 10 messages only? ✅
+
+-> Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
+Does it use the scroll event to load more messages? ✅
+
+-> Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
+Does it load just 10 messages, without spamming the scroll event (This can be done using the function Throttle)? ✅
+
+-> check one user-1 already logged in Browser-X try to login to Browser-Y.
+Is the user logged out? ✅
 
 ```
-
--> initial load page msg show msg ???
--> scroll ???
