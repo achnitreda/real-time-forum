@@ -3,40 +3,6 @@
 ## thought process:
 
 ```
-- You will have only one HTML file, so every change of page you want to do, should be handled in the Javascript.
-- This can be called having a single page application.
-
-=> how to know if your app is MPA or SSR app ✅
-=> how to switch your app from MPA or SSR to SPA ✅
-```
-
-```
-- New Forum:  ✅
-=> users need to login in order to see the posts and everything
-=> not like the old forum that let's unregisted users see posts
-
-- register part: ✅
-=> need to have additional infos
-Username-
-Age
-Gender
-First Name-
-Last Name-
-E-mail-
-Password-
-
-- login part: ✅
-=> The user must be able to connect using either the nickname or the e-mail combined with the password.
-
-- logout part: ✅
-=> The user must be able to log out from any page on the forum.
-
-- posts and comments are like the old forum: ✅
-```
-
-```
-- private messages : ✅
-- when shutting server down database has a state on online user. ⛔
 - xss ⛔
 ```
 

@@ -268,7 +268,14 @@ function initializeWebSocketListeners() {
     const typingCleanup = WebSocketService.onTypingStatus(({ user_id, is_typing }) => {
         if (user_id === currentChatId) {
             const typingIndicator = document.getElementById('typingIndicator');
-            typingIndicator.textContent = is_typing ? 'typing...' : '';
+            if (is_typing) {
+                typingIndicator.innerHTML = `
+                <span class="typing-dots">
+                    typing<span>.</span><span>.</span><span>.</span>
+                </span>`;
+            }else {
+                typingIndicator.textContent = ''
+            }
         }
     });
 
