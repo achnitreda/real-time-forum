@@ -1,4 +1,3 @@
-// Current page cleanup function
 let currentCleanupFunction = null;
 
 async function checkAuthStatus() {
@@ -31,7 +30,7 @@ async function cleanupCurrentPage() {
 
 async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
     try {
-        // Clean up previous page if needed
+        // Clean up previous page, normal navigation
         await cleanupCurrentPage();
 
         // Clear previous content
@@ -54,10 +53,8 @@ async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
         // Store cleanup function if provided
         if (typeof result === 'function') {
             currentCleanupFunction = result;
-        } else if (result && typeof result.cleanup === 'function') {
-            // Handle if the page returns an object with a cleanup method
-            currentCleanupFunction = () => result.cleanup();
         }
+
     } catch (error) {
         console.error('Error in handlePageLoad:', error);
         throw error;
@@ -67,13 +64,6 @@ async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
 async function router() {
     const app = document.getElementById('app');
     const currentPath = window.location.pathname;
-
-    // Update session storage for navigation history
-    const previousPath = sessionStorage.getItem('currentPath');
-    if (previousPath && previousPath !== currentPath) {
-        sessionStorage.setItem('previousPath', previousPath);
-    }
-    sessionStorage.setItem('currentPath', currentPath);
 
     try {
         const isAuthenticated = await checkAuthStatus();
@@ -144,7 +134,7 @@ async function router() {
     }
 }
 
-// Also clean up when the window is about to unload
+// Also clean up when the window is about to unload, browser/tab closure
 window.addEventListener('beforeunload', () => {
     cleanupCurrentPage();
 });
@@ -155,7 +145,7 @@ const eventListeners = {
         // Handle initial page load
         document.addEventListener('DOMContentLoaded', router);
 
-        // Handle browser back/forward buttons
+        // Handle browser back/forward buttons, browser history navigation
         window.addEventListener('popstate', () => {
             cleanupCurrentPage().then(() => router());
         });

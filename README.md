@@ -2,10 +2,6 @@
 
 ## thought process:
 
-```
-- xss ⛔
-```
-
 ## Docs:
 
 ```
@@ -175,7 +171,16 @@ Does it use the scroll event to load more messages? ✅
 -> Try to open a private conversation, that has more than 20 messages and scroll up to see the rest of the conversation.
 Does it load just 10 messages, without spamming the scroll event (This can be done using the function Throttle)? ✅
 
+______________
+
+-> if user-2 sent msg to user-1 that is connected to two tabs.
+Is the msg sent to other users in all connected tabs? ✅
+
 -> check one user-1 already logged in Browser-X try to login to Browser-Y.
 Is the user logged out? ✅
 
+-> prevent xss attack ⛔
+
 ```
+
+-> 
