@@ -1,35 +1,7 @@
-let headerCleanupFunctions = [];
-
 export async function renderHeader() {
     try {
-
-        cleanupHeaderListeners();
-
-        // Check login status
-        const response = await fetch('/api/user/status');
-        const data = await response.json();
-
         const header = document.getElementById('header');
-        header.innerHTML = createHeaderContent();
-
-        if (data.isLoggedIn) {
-            initializeHeaderForms();
-        }
-
-        return () => cleanupHeaderListeners();
-    } catch (error) {
-        console.error('Error rendering header:', error);
-        return () => cleanupHeaderListeners();
-    }
-}
-
-function cleanupHeaderListeners() {
-    headerCleanupFunctions.forEach(cleanup => cleanup());
-    headerCleanupFunctions = [];
-}
-
-function createHeaderContent() {
-    const loggedInContent = `
+        header.innerHTML = `
         <header class="head">
             <a class="logo" href="/">Forum</a>
             <div>
@@ -65,8 +37,10 @@ function createHeaderContent() {
             </div>
         </header>
     `;
-
-    return loggedInContent;
+        initializeHeaderForms();
+    } catch (error) {
+        console.error('Error rendering header:', error);
+    }
 }
 
 function initializeHeaderForms() {
@@ -76,6 +50,12 @@ function initializeHeaderForms() {
         e.preventDefault();
         const button = e.submitter;
         const action = button.dataset.action;
+
+        const validActions = ['posting', 'messages', 'logout'];
+        if (!validActions.includes(action)) {
+            console.error('Invalid action:', action);
+            return;
+        }
 
         switch (action) {
             case 'posting':
@@ -107,8 +87,4 @@ function initializeHeaderForms() {
     };
 
     headerForm.addEventListener('submit', formSubmitHandler);
-
-    headerCleanupFunctions.push(() =>
-        headerForm.removeEventListener('submit', formSubmitHandler)
-    );
 }
