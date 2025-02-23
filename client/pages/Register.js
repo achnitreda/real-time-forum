@@ -1,9 +1,9 @@
+import { sanitizeInput } from "../services/utils.js";
+
 let registerCleanupFunctions = [];
 
 export async function loadRegisterPage(container) {
     try {
-        // Cleanup previous event listeners
-        cleanupRegisterListeners();
 
         container.innerHTML = `
         <div class="form-container">
@@ -82,12 +82,10 @@ export async function loadRegisterPage(container) {
         `;
 
         initializeRegister();
-
-        return () => cleanupRegisterListeners();
     } catch (error) {
         console.error('Error loading register page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-
+    } finally {
         return () => cleanupRegisterListeners();
     }
 }
@@ -104,11 +102,11 @@ function initializeRegister() {
 
     const loginLinkHandler = (e) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent event bubbling
-        const navigationEvent = new CustomEvent('navigate', {
+        e.stopPropagation();
+
+        window.dispatchEvent(new CustomEvent('navigate', {
             detail: { path: '/login' }
-        });
-        window.dispatchEvent(navigationEvent);
+        }));
     };
 
     const formSubmitHandler = async (e) => {
@@ -118,11 +116,11 @@ function initializeRegister() {
         try {
             const formData = new FormData(registerForm);
             const userData = {
-                email: formData.get('email'),
-                username: formData.get('uname'),
+                email: sanitizeInput(formData.get('email')),
+                username: sanitizeInput(formData.get('uname')),
                 password: formData.get('password'),
-                firstName: formData.get('firstName'),
-                lastName: formData.get('lastName'),
+                firstName: sanitizeInput(formData.get('firstName')),
+                lastName: sanitizeInput(formData.get('lastName')),
                 age: parseInt(formData.get('age')),
                 gender: formData.get('gender')
             };

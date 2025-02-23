@@ -14,12 +14,12 @@ import (
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	// Create a struct to match the incoming JSON
 	var userData struct {

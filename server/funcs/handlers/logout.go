@@ -6,12 +6,12 @@ import (
 )
 
 func Logout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	http.SetCookie(w, &http.Cookie{
 		Name:   "Token",

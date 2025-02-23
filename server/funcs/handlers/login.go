@@ -14,13 +14,12 @@ import (
 )
 
 func Login(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
-	// Set JSON content type
-	w.Header().Set("Content-Type", "application/json")
 
 	identifier := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")

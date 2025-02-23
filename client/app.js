@@ -80,7 +80,6 @@ async function router() {
             return;
         }
 
-        // Regular routing with header control
         switch (currentPath) {
             case '/':
             case '/home':

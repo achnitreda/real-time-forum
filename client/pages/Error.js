@@ -2,8 +2,6 @@ let errorCleanupFunctions = [];
 
 export async function loadErrorPage(container, errorData) {
     try {
-        cleanupErrorListeners();
-
         container.innerHTML = `
             <div class="err">
                 <div class="error-content">
@@ -20,9 +18,6 @@ export async function loadErrorPage(container, errorData) {
         `;
 
         initializeErrorPage(errorData);
-
-        return () => cleanupErrorListeners();
-
     } catch (error) {
         console.error('Error loading error page:', error);
         container.innerHTML = `
@@ -31,6 +26,7 @@ export async function loadErrorPage(container, errorData) {
                 <p>Something went wrong. Please try again later.</p>
             </div>
         `;
+    } finally {
         return () => cleanupErrorListeners();
     }
 }
@@ -53,10 +49,8 @@ function initializeErrorPage(errorData = {}) {
     if (goBackLink) {
         const goBackHandler = (e) => {
             e.preventDefault();
-            const previousPath = sessionStorage.getItem('previousPath') || '/';
-
             window.dispatchEvent(new CustomEvent('navigate', {
-                detail: { path: previousPath }
+                detail: { path: '/' }
             }));
         };
 

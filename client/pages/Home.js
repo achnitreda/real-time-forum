@@ -6,9 +6,6 @@ let cleanupFunctions = [];
 
 export async function loadHomePage(container) {
     try {
-        // 0 Clean up previous event listeners
-        cleanupAllListeners();
-
         // 1 Create and insert HTML structure
         container.innerHTML = `
             <div class="container">
@@ -41,12 +38,10 @@ export async function loadHomePage(container) {
         // 4 like/dislike functionality
         initializeLikeDislike();
 
-        // Return cleanup function
-        return () => cleanupAllListeners();
-
     } catch (error) {
         console.error('Error loading home page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+    } finally {
         return () => cleanupAllListeners();
     }
 }

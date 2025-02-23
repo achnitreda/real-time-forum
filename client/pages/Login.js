@@ -1,10 +1,9 @@
+import { sanitizeInput } from "../services/utils.js";
+
 let loginCleanupFunctions = [];
 
 export async function loadLoginPage(container) {
     try {
-        // Cleanup previous event listeners
-        cleanupLoginListeners();
-
         // Insert HTML structure directly
         container.innerHTML = `
             <div class="form-container">
@@ -36,12 +35,10 @@ export async function loadLoginPage(container) {
         // Initialize login form
         initializeLoginForm();
 
-        return () => cleanupLoginListeners();
-
     } catch (error) {
         console.error('Error loading login page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-
+    } finally {
         return () => cleanupLoginListeners()
     }
 }
@@ -62,9 +59,14 @@ function initializeLoginForm() {
 
         try {
             const formData = new FormData(loginForm);
+
+            const sanitizedFormData = new FormData();
+            sanitizedFormData.append('email', sanitizeInput(formData.get('email')))
+            sanitizedFormData.append('password', sanitizeInput(formData.get('password')))
+
             const response = await fetch('/api/login', {
                 method: 'POST',
-                body: formData
+                body: sanitizedFormData
             });
 
             if (!response.ok) {

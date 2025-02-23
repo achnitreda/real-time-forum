@@ -1,10 +1,9 @@
+import { sanitizeInput } from "../services/utils.js";
+
 let postingCleanupFunctions = [];
 
 export async function loadPostingPage(container) {
     try {
-
-        cleanupPostingListeners()
-
         container.innerHTML = `
             <div class="form-container-post">
                 <form class="myform-post" id="postingForm">
@@ -36,13 +35,10 @@ export async function loadPostingPage(container) {
         `;
 
         await initializePostingForm();
-
-        return () => cleanupPostingListeners();
-
     } catch (error) {
         console.error('Error loading posting page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-
+    } finally {
         return () => cleanupPostingListeners();
     }
 }
@@ -121,15 +117,24 @@ async function initializePostingForm() {
 
             try {
                 const formData = new FormData(postingForm);
+                const sanitizedFormData = new FormData()
+
+                sanitizedFormData.append('title', sanitizeInput(formData.get('title')));
+                sanitizedFormData.append('content', sanitizeInput(formData.get('content')));
+
+                const file = formData.get('file');
+                if (file instanceof File) {
+                    sanitizedFormData.append('file', file);
+                }
 
                 // Validate categories
-                if (!formData.getAll('categories').length) {
-                    throw new Error('Please select at least one category');
-                }
+                formData.getAll('categories').forEach(category => {
+                    sanitizedFormData.append('categories', sanitizeInput(category));
+                });
 
                 const response = await fetch('/api/posting', {
                     method: 'POST',
-                    body: formData
+                    body: sanitizedFormData
                 });
 
                 if (response.status === 401) {

@@ -1,3 +1,5 @@
+import { sanitizeInput } from "../services/utils.js";
+
 let offset = 3;
 let isLoading = false;
 let hasMoreComments = true;
@@ -5,8 +7,6 @@ let commentCleanupFunctions = [];
 
 export async function loadCommentPage(container) {
     try {
-        cleanupCommentListeners();
-
         container.innerHTML = `
             <div class="container">
                 <div class="post-container">
@@ -50,15 +50,13 @@ export async function loadCommentPage(container) {
 
         initializeLikeDislike();
 
-        return () => cleanupCommentListeners();
-
     } catch (error) {
         console.error('Error loading comment page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-
+    } finally {
         return () => cleanupCommentListeners();
     }
-}
+} 
 
 function cleanupCommentListeners() {
     commentCleanupFunctions.forEach(cleanup => cleanup());
@@ -157,12 +155,15 @@ function initializeCommentForm(postId) {
         e.preventDefault();
 
         const formData = new FormData(commentForm);
-        formData.append('post_id', postId);
+        const sanitizedFormData = new FormData();
+
+        sanitizedFormData.append('Content', sanitizeInput(formData.get('Content')));
+        sanitizedFormData.append('post_id', postId);
 
         try {
             const response = await fetch('/api/comment', {
                 method: 'POST',
-                body: formData
+                body: sanitizedFormData
             });
 
             if (response.status === 401) {
