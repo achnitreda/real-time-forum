@@ -31,43 +31,17 @@ func InsertMessage(senderID, receiverID int, content string) (int, error) {
 		return 0, errors.New("senderID should not equal receiverID")
 	}
 
-	// 1- start transaction
-	tx, err := Db.Begin()
-	if err != nil {
-		return 0, err
-	}
-
-	// 2- insert msg
-	result, err := tx.Exec(`
-	INSERT INTO private_messages (sender_id, receiver_id, content, sent_at) 
+	result, err := Db.Exec(`
+    INSERT INTO private_messages (sender_id, receiver_id, content, sent_at) 
     VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
 		senderID, receiverID, content)
 	if err != nil {
-		tx.Rollback() // Undo everything if error occurs
 		return 0, err
 	}
 
-	// 3- get Msg Id
+	// Get message ID
 	messageID, err := result.LastInsertId()
 	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	// 4 - Update Conversation
-	_, err = tx.Exec(`
-	INSERT INTO conversations (user1_id, user2_id, last_message_at) 
-    VALUES (?, ?, CURRENT_TIMESTAMP)
-	ON CONFLICT (user1_id, user2_id)
-	DO UPDATE SET last_message_at = CURRENT_TIMESTAMP
-	`, senderID, receiverID)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	// 5- commit tx
-	if err = tx.Commit(); err != nil {
 		return 0, err
 	}
 
@@ -133,7 +107,6 @@ func GetMessages(userID, otherUserID, limit, offset int) ([]Message, error) {
 	return messages, nil
 }
 
-// needs a review
 func GetConversations(userID int) ([]Conversation, error) {
 	rows, err := Db.Query(`
 	WITH LastMessages AS (
@@ -263,5 +236,24 @@ func UpdateUserOnlineStatus(userID int, isOnline bool) error {
 		log.Printf("Error in UpdateUserOnlineStatus: %v", err)
 	}
 
+	return err
+}
+
+func GetUnreadMessagesCount(userID int) (int, error) {
+	var count int
+	err := Db.QueryRow(`SELECT COUNT(*) 
+		FROM private_messages 
+		WHERE receiver_id = ? AND is_read = false`, userID).Scan(&count)
+
+	return count, err
+}
+
+func MarkMessagesAsRead(receiverID, senderID int) error {
+	_, err := Db.Exec(`
+		UPDATE private_messages 
+		SET is_read = true 
+		WHERE receiver_id = ? AND sender_id = ? AND is_read = false`,
+		receiverID, senderID,
+	)
 	return err
 }

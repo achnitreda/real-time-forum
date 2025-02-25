@@ -110,17 +110,6 @@ const (
         FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
     );`
-
-	conversationsTable = `
-    CREATE TABLE IF NOT EXISTS conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user1_id INTEGER NOT NULL,
-        user2_id INTEGER NOT NULL,
-        last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user1_id, user2_id),
-        FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE
-    );`
 )
 
 func CreateDB() error {
@@ -148,7 +137,6 @@ func CreateDB() error {
 		{"comment_interactions", commentInteractionsTable},
 		{"user_sessions", userSessionsTable},
 		{"private_messages", privateMessagesTable},
-		{"conversations", conversationsTable},
 	}
 
 	for _, table := range tables {

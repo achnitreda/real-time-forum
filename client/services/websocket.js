@@ -8,10 +8,34 @@ const statusCallbacks = new Set();
 const typingCallbacks = new Set();
 
 export const WebSocketService = {
+    isInitialized: false,
+    
+    init() {
+        if (this.isInitialized) return;
+        
+        // Make the WebSocketService available globally
+        if (typeof window !== 'undefined') {
+            window.WebSocketService = this;
+            console.log("WebSocketService registered globally");
+            this.isInitialized = true;
+        }
+        
+        // Auto-reconnect on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && !ws) {
+                console.log("Auto-reconnect on visibility change")
+                this.connect();
+            }
+        });
+    },
+    
     connect() {
+        // Initialize first
+        this.init();
+        
         return new Promise((resolve, reject) => {
             if (ws) {
-                resolve()
+                resolve();
                 return;
             }
 
@@ -26,7 +50,7 @@ export const WebSocketService = {
                     payload: { is_online: true }
                 }));
                 this.notifyStatusCallbacks(true);
-                resolve()
+                resolve();
             };
 
             ws.onclose = () => {
@@ -38,7 +62,7 @@ export const WebSocketService = {
 
             ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
-                reject(error)
+                reject(error);
             };
 
             ws.onmessage = (event) => {
@@ -62,7 +86,7 @@ export const WebSocketService = {
                     console.error('Error processing message:', error);
                 }
             };
-        })
+        });
     },
 
     handleSessionExpired() {
@@ -138,12 +162,8 @@ export const WebSocketService = {
 
     notifyStatusCallbacks(isOnline) {
         statusCallbacks.forEach(callback => callback({ is_online: isOnline }));
-    }
+    },
 };
 
-// Auto-reconnect on visibility change
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && !ws) {
-        WebSocketService.connect();
-    }
-});
+// Initialize immediately
+WebSocketService.init();

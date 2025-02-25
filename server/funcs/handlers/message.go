@@ -105,6 +105,8 @@ func getConversations(w http.ResponseWriter, userID int) {
 }
 
 func sendMessage(w http.ResponseWriter, r *http.Request, senderID int) {
+
+	
 	// Parse request body
 	var msgRequest struct {
 		ReceiverID int    `json:"receiver_id"`
@@ -163,7 +165,7 @@ func sendMessage(w http.ResponseWriter, r *http.Request, senderID int) {
 	})
 }
 
-func UpdateOnlineStatusHandler(w http.ResponseWriter, r *http.Request) {
+func UnreadMessagesCountHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	userID, isAuth := CheckIfCookieValid(w, r)
@@ -175,6 +177,35 @@ func UpdateOnlineStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	count, err := data.GetUnreadMessagesCount(userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Failed to fetch unread messages count",
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]int{
+		"count": count,
+	})
+}
+
+
+func MarkMessagesAsReadHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Check authentication
+	userID, isAuth := CheckIfCookieValid(w, r)
+	if !isAuth {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Authentication required",
+		})
+		return
+	}
+
+	// Only accept POST requests
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -183,11 +214,12 @@ func UpdateOnlineStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var statusUpdate struct {
-		IsOnline bool `json:"is_online"`
+	// Parse request body
+	var request struct {
+		SenderID int `json:"sender_id"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&statusUpdate); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": "Invalid request format",
@@ -195,11 +227,12 @@ func UpdateOnlineStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := data.UpdateUserOnlineStatus(userID, statusUpdate.IsOnline)
+	// Mark messages as read
+	err := data.MarkMessagesAsRead(userID, request.SenderID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Failed to update online status",
+			"error": "Failed to mark messages as read",
 		})
 		return
 	}

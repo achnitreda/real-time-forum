@@ -1,9 +1,22 @@
+import { WebSocketService } from './services/websocket.js';
+
 let currentCleanupFunction = null;
+
+// Initialize WebSocketService early
+WebSocketService.init();
 
 async function checkAuthStatus() {
     try {
         const response = await fetch('/api/user/status');
         const data = await response.json();
+
+         // If authenticated, ensure WebSocket is connected
+         if (data.isLoggedIn) {
+            WebSocketService.connect().catch(error => {
+                console.error("Error connecting WebSocket:", error);
+            });
+        }
+
         return data.isLoggedIn;
     } catch (error) {
         console.error('Error checking auth status:', error);

@@ -36,9 +36,9 @@ func main() {
 	http.HandleFunc("/api/posting", handlers.Auth(handlers.Posting))
 
 	// Messaging routes
-	http.HandleFunc("/api/messages", handlers.Auth(handlers.MessagingHandler))
-	http.HandleFunc("/api/online-status", handlers.Auth(handlers.UpdateOnlineStatusHandler))
-
+	http.HandleFunc("/api/messages", handlers.MessagingHandler)
+	http.HandleFunc("/api/messages/unread-count", handlers.UnreadMessagesCountHandler)
+	http.HandleFunc("/api/messages/mark-read", handlers.MarkMessagesAsReadHandler)
 	http.HandleFunc("/api/ws", handlers.HandleWebSocket)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
