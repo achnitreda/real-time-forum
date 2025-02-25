@@ -1,9 +1,11 @@
-import { WebSocketService } from './services/websocket.js';
+import { setupLogoutSync, WebSocketService } from './services/websocket.js';
 
 let currentCleanupFunction = null;
 
 // Initialize WebSocketService early
 WebSocketService.init();
+
+setupLogoutSync();
 
 async function checkAuthStatus() {
     try {

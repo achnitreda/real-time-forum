@@ -1,10 +1,12 @@
+import { performLogout } from "../services/websocket.js";
+
 export async function renderHeader() {
     try {
         const header = document.getElementById('header');
-        
+
         // Fetch unread message count
         const unreadCount = await fetchUnreadMessageCount();
-        
+
         header.innerHTML = `
         <header class="head">
             <a class="logo" href="/">Forum</a>
@@ -42,13 +44,13 @@ export async function renderHeader() {
             </div>
         </header>
     `;
-        
+
         // Initialize notification WebSocket
         setupNotificationListener();
-        
+
         // Initialize form handlers
         initializeHeaderForms();
-        
+
         // Make update function globally available
         window.updateUnreadBadge = updateUnreadBadge;
         console.log("updateUnreadBadge registered globally");
@@ -76,14 +78,14 @@ function setupNotificationListener() {
     // WebSocketService is now guaranteed to be available from app.js
     if (window.WebSocketService) {
         console.log("Setting up notification listener in header");
-        
+
         window.WebSocketService.onMessage(message => {
             console.log("Message received in header, updating badge");
             updateUnreadBadge();
         });
     } else {
         console.warn("WebSocketService not available for notifications");
-        
+
         // Try again after a short delay
         setTimeout(setupNotificationListener, 500);
     }
@@ -93,15 +95,15 @@ async function updateUnreadBadge() {
     try {
         console.log("Updating unread badge");
         const count = await fetchUnreadMessageCount();
-        
+
         const badge = document.querySelector('.notification-badge');
         const messageLabel = document.querySelector('.message-label');
-        
+
         if (!messageLabel) {
             console.warn("Message label not found in DOM");
             return;
         }
-        
+
         if (count > 0) {
             if (badge) {
                 badge.textContent = count;
@@ -124,7 +126,7 @@ async function updateUnreadBadge() {
 
 function initializeHeaderForms() {
     const headerForm = document.querySelector('.head form');
-    
+
     if (!headerForm) {
         console.warn("Header form not found");
         return;
@@ -137,7 +139,7 @@ function initializeHeaderForms() {
             console.warn("No submitter found in event");
             return;
         }
-        
+
         const action = button.dataset.action;
 
         const validActions = ['posting', 'messages', 'logout'];
@@ -158,19 +160,7 @@ function initializeHeaderForms() {
                 }));
                 break;
             case 'logout':
-                try {
-                    const response = await fetch('/api/logout', {
-                        method: 'POST'
-                    });
-
-                    if (response.ok) {
-                        window.dispatchEvent(new CustomEvent('navigate', {
-                            detail: { path: '/login' }
-                        }));
-                    }
-                } catch (error) {
-                    console.error('Logout error:', error);
-                }
+                performLogout()
                 break;
         }
     };

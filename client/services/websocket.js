@@ -9,17 +9,17 @@ const typingCallbacks = new Set();
 
 export const WebSocketService = {
     isInitialized: false,
-    
+
     init() {
         if (this.isInitialized) return;
-        
+
         // Make the WebSocketService available globally
         if (typeof window !== 'undefined') {
             window.WebSocketService = this;
             console.log("WebSocketService registered globally");
             this.isInitialized = true;
         }
-        
+
         // Auto-reconnect on visibility change
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && !ws) {
@@ -28,11 +28,11 @@ export const WebSocketService = {
             }
         });
     },
-    
+
     connect() {
         // Initialize first
         this.init();
-        
+
         return new Promise((resolve, reject) => {
             if (ws) {
                 resolve();
@@ -101,8 +101,42 @@ export const WebSocketService = {
 
     disconnect() {
         if (ws) {
-            ws.close();
-            ws = null;
+            try {
+                // Send offline status before disconnecting if connection is open
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'offline_status',
+                        payload: { is_online: false }
+                    }));
+
+                    // Also make API call to ensure offline status is recorded
+                    fetch('/api/user/status/offline', {
+                        method: 'POST'
+                    }).catch(error => {
+                        console.error("Error updating offline status via API:", error);
+                    });
+
+                    console.log("Sent offline status before disconnecting");
+
+                    // Give a small delay to allow the message to be sent
+                    setTimeout(() => {
+                        ws.close();
+                        ws = null;
+                        console.log("WebSocket closed after sending offline status");
+                    }, 200);
+                } else {
+                    // If not in OPEN state, just close
+                    ws.close();
+                    ws = null;
+                }
+            } catch (error) {
+                console.error("Error during WebSocket disconnect:", error);
+                // Make sure to close the connection even if error occurs
+                try {
+                    ws.close();
+                } catch { }
+                ws = null;
+            }
         }
     },
 
@@ -164,6 +198,51 @@ export const WebSocketService = {
         statusCallbacks.forEach(callback => callback({ is_online: isOnline }));
     },
 };
+
+export const setupLogoutSync = () => {
+    const logoutHandler = (event) => {
+        if (event.key === 'forum_logout_trigger' && event.newValue) {
+            console.log('Logout triggered from another tab');
+            window.removeEventListener('storage', logoutHandler);
+            performLogout(false);
+        }
+    }
+    window.addEventListener('storage', logoutHandler)
+}
+
+export const performLogout = (setStorage = true) => {
+    console.log('Performing logout');
+
+    if (setStorage) {
+        localStorage.setItem('forum_logout_trigger', Date.now().toString());
+    }
+
+    if (window.WebSocketService) {
+        try {
+            window.WebSocketService.disconnect();
+            console.log("WebSocket disconnected for logout");
+        } catch (error) {
+            console.error("Error disconnecting WebSocket:", error);
+        }
+    }
+
+    fetch('/api/logout', {
+        method: 'POST'
+    }).then(response => {
+        if (response.ok) {
+            localStorage.removeItem('forum_logout_trigger');
+
+            window.dispatchEvent(new CustomEvent('navigate', {
+                detail: { path: '/login' }
+            }));
+        }
+    }).catch(error => {
+        console.error('Logout error:', error);
+        window.dispatchEvent(new CustomEvent('navigate', {
+            detail: { path: '/login' }
+        }));
+    });
+}
 
 // Initialize immediately
 WebSocketService.init();

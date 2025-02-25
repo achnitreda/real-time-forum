@@ -22,6 +22,7 @@ func main() {
 	http.HandleFunc("/api/register", handlers.AuthLG(handlers.Register))
 	http.HandleFunc("/api/logout", handlers.Auth(handlers.Logout))
 	http.HandleFunc("/api/user/status", CheckAuthStatus)
+	http.HandleFunc("/api/user/status/offline", SetUserOfflineHandler)
 
 	// static files
 	http.HandleFunc("/client/", forum.StaticFileHandler)
@@ -69,4 +70,39 @@ func CheckAuthStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(response)
+}
+
+func SetUserOfflineHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+
+    if r.Method != http.MethodPost {
+        w.WriteHeader(http.StatusMethodNotAllowed)
+        json.NewEncoder(w).Encode(map[string]string{
+            "error": "Method not allowed",
+        })
+        return
+    }
+
+    userID, isAuth := handlers.CheckIfCookieValid(w, r)
+    if !isAuth {
+        w.WriteHeader(http.StatusUnauthorized)
+        json.NewEncoder(w).Encode(map[string]string{
+            "error": "Authentication required",
+        })
+        return
+    }
+
+    err := data.UpdateUserOnlineStatus(userID, false)
+    if err != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(map[string]string{
+            "error": "Failed to update online status",
+        })
+        return
+    }
+
+    json.NewEncoder(w).Encode(map[string]string{
+        "status": "success",
+        "message": "User set to offline",
+    })
 }

@@ -187,13 +187,19 @@ func (wm *WebSocketManager) handleMessages(userID int, conn *websocket.Conn) {
 			case "typing":
 				wm.handleTypingStatus(userID, msg.Payload)
 			case "reconnect":
-				// Update online status on reconnection
 				if err := data.UpdateUserOnlineStatus(userID, true); err != nil {
 					log.Printf("Error updating online status on reconnect for user_id: %d: %v", userID, err)
 				} else {
 					log.Printf("Successfully updated online status on reconnect for user_id: %d", userID)
 				}
 				wm.broadcastOnlineStatus(userID, true)
+			case "offline_status":
+				if err := data.UpdateUserOnlineStatus(userID, false); err != nil {
+					log.Printf("Error updating offline status for user_id: %d: %v", userID, err)
+				} else {
+					log.Printf("Successfully updated offline status for user_id: %d", userID)
+				}
+				wm.broadcastOnlineStatus(userID, false)
 			}
 		}
 	}
