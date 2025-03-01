@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+
 	forum "forum/funcs"
 	data "forum/funcs/database"
 	handlers "forum/funcs/handlers"
-	"net/http"
-	"strings"
 )
 
 func main() {
@@ -60,49 +61,51 @@ func CheckAuthStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	userID, isAuthenticated := handlers.CheckIfCookieValid(w, r)
-
+	userName := data.GetUserName(userID)
 	response := struct {
-		IsLoggedIn bool `json:"isLoggedIn"`
-		UserID     int  `json:"userId,omitempty"`
+		IsLoggedIn bool   `json:"isLoggedIn"`
+		UserID     int    `json:"userId,omitempty"`
+		UserName   string `json:"userName"`
 	}{
 		IsLoggedIn: isAuthenticated,
 		UserID:     userID,
+		UserName: userName,
 	}
 
 	json.NewEncoder(w).Encode(response)
 }
 
 func SetUserOfflineHandler(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 
-    if r.Method != http.MethodPost {
-        w.WriteHeader(http.StatusMethodNotAllowed)
-        json.NewEncoder(w).Encode(map[string]string{
-            "error": "Method not allowed",
-        })
-        return
-    }
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Method not allowed",
+		})
+		return
+	}
 
-    userID, isAuth := handlers.CheckIfCookieValid(w, r)
-    if !isAuth {
-        w.WriteHeader(http.StatusUnauthorized)
-        json.NewEncoder(w).Encode(map[string]string{
-            "error": "Authentication required",
-        })
-        return
-    }
+	userID, isAuth := handlers.CheckIfCookieValid(w, r)
+	if !isAuth {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Authentication required",
+		})
+		return
+	}
 
-    err := data.UpdateUserOnlineStatus(userID, false)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        json.NewEncoder(w).Encode(map[string]string{
-            "error": "Failed to update online status",
-        })
-        return
-    }
+	err := data.UpdateUserOnlineStatus(userID, false)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Failed to update online status",
+		})
+		return
+	}
 
-    json.NewEncoder(w).Encode(map[string]string{
-        "status": "success",
-        "message": "User set to offline",
-    })
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "User set to offline",
+	})
 }

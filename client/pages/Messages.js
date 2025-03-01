@@ -220,13 +220,13 @@ async function loadMessages(append = false) {
     }
 }
 
-function renderMessages(messages, currentUserID, append = false) {
+function renderMessages(messages, currentUserID, append = false, addMsgFromClient = false) {
     const chatMessages = document.getElementById('chatMessages');
     // to prevent Browser from repaint itself each time we create a msg
     const fragment = document.createDocumentFragment();
 
     messages.forEach(msg => {
-        const msgEle = createMessageElement(msg, currentUserID);
+        const msgEle = createMessageElement(msg, currentUserID, addMsgFromClient);
         fragment.appendChild(msgEle);
     });
 
@@ -240,12 +240,17 @@ function renderMessages(messages, currentUserID, append = false) {
     }
 }
 
-function createMessageElement(message, currentUserID) {
+function createMessageElement(message, currentUserID, addMsgFromClient) {
     const div = document.createElement('div');
-    const isSender = message.sender_id === currentUserID; // Compare with current user's ID
+    console.log(addMsgFromClient);
+    
+    let isSender = message.sender_id === currentUserID // Compare with current user's ID
+    if (addMsgFromClient) isSender = true  
     div.className = `message ${isSender ? 'sent' : 'received'}`;
 
-    const timestamp = new Date(message.sent_at).toLocaleTimeString([], {
+    const date = addMsgFromClient ? new Date() : new Date(message.sent_at);
+
+    const timestamp = date.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -380,6 +385,7 @@ function initializeMessageInput() {
         if (!content) return;
 
         if (WebSocketService.sendMessage(currentChatId, content)) {
+            renderMessages([{content: content, sender_name:user.login}], user.id, false, true)
             messageInput.value = '';
         }
     };

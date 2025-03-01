@@ -49,3 +49,14 @@ func InsertUserInfo(email, password, uname, firstName, lastName, age, gender str
 
 	return nil
 }
+
+
+func GetUserName(id int) (string){
+	var userName string
+	err := Db.QueryRow("SELECT uname FROM users WHERE id=?", id).Scan(&userName)
+	if err != nil {
+		return ""
+	}
+
+	return userName
+}

@@ -3,6 +3,7 @@
 import { setupLogoutSync, WebSocketService } from './services/websocket.js';
 
 let currentCleanupFunction = null;
+// let currentUserName = '';
 
 // Initialize WebSocketService early
 WebSocketService.init();
@@ -20,8 +21,9 @@ async function checkAuthStatus() {
                 console.error("Error connecting WebSocket:", error);
             });
         }
-
-        return data.isLoggedIn;
+        console.log(data);
+        
+        return data;
     } catch (error) {
         console.error('Error checking auth status:', error);
         return false;
@@ -93,16 +95,22 @@ async function router() {
     const currentPath = window.location.pathname;
 
     try {
-        const isAuthenticated = await checkAuthStatus();
+        const data = await checkAuthStatus();
+        window.user = {
+            login: data.userName,
+            id: data.userId
+        };
+        console.log(user);
+         // use it i rendring msg from client side
         const authRoutes = ['/login', '/register'];
 
         // Handle auth redirects
-        if (isAuthenticated && authRoutes.includes(currentPath)) {
+        if (data.isLoggedIn && authRoutes.includes(currentPath)) {
             await navigateToPage('/');
             return;
         }
 
-        if (!isAuthenticated && !authRoutes.includes(currentPath)) {
+        if (!data.isLoggedIn && !authRoutes.includes(currentPath)) {
             await navigateToPage('/login');
             return;
         }

@@ -271,7 +271,7 @@ func (wm *WebSocketManager) handleNewMessage(senderID int, payload interface{}) 
 
 	// Send to receiver if online
 	wm.sendToUser(messageData.ReceiverID, notification)
-	wm.sendToUser(senderID, notification)
+	// wm.sendToUser(senderID, notification)
 }
 
 func (wm *WebSocketManager) sendToUser(userID int, msg WebSocketMessage) {
