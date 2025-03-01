@@ -1,4 +1,4 @@
-const WebSocketService  = window.WebSocketService;
+const WebSocketService = window.WebSocketService;
 
 let messageCleanupFunctions = [];
 let currentOffset = 0;
@@ -39,15 +39,15 @@ export async function loadMessagesPage(container) {
         `;
 
         // Initialize WebSocket connection
-        await WebSocketService.connect();
+        // await WebSocketService.connect();
 
         // initialize listeners
-        initializeWebSocketListeners();
+        // initializeWebSocketListeners();
         initializeMessageInput();
         initializeScrollListener();
 
         // Load conversations and new users
-        await loadConversations();
+        await loadConversations(true);
 
         // Restore last active chat if exists
         const lastActiveChat = sessionStorage.getItem('lastActiveChat');
@@ -63,13 +63,13 @@ export async function loadMessagesPage(container) {
 }
 
 function cleanupMessageListeners() {
-    messageCleanupFunctions.forEach(cleanup => cleanup());
-    messageCleanupFunctions = [];
-    WebSocketService.disconnect();
-    processedMessages.clear();
+    // messageCleanupFunctions.forEach(cleanup => cleanup());
+    // messageCleanupFunctions = [];
+    // WebSocketService.disconnect();
+    // processedMessages.clear();
 }
 
-async function loadConversations() {
+export async function loadConversations(isMessagePage) {
     try {
         const response = await fetch('/api/messages');
         if (!response.ok) {
@@ -77,20 +77,21 @@ async function loadConversations() {
         }
 
         const data = await response.json();
-        renderConversations(data.conversations, data.newUsers);
+        renderConversations(data.conversations, data.newUsers, isMessagePage);
     } catch (error) {
         console.error('Error loading conversations:', error);
     }
 }
 
-function renderConversations(conversations, newUsers) {
-    const chatList = document.getElementById('chatList');
+function renderConversations(conversations, newUsers, isMessagePage) {
+
+    const chatList = document.getElementById(isMessagePage ? "chatList" : "chatListPages");
     chatList.innerHTML = '';
 
     // Render active conversations
     if (conversations) {
         conversations.forEach(conv => {
-            const conversationElement = createConversationElement(conv);
+            const conversationElement = createConversationElement(conv, false, isMessagePage);
             chatList.appendChild(conversationElement);
         });
     }
@@ -104,13 +105,22 @@ function renderConversations(conversations, newUsers) {
 
         // Render new users
         newUsers.forEach(user => {
-            const userElement = createConversationElement(user, true);
+            const userElement = createConversationElement(user, true, isMessagePage);
             chatList.appendChild(userElement);
         });
     }
 }
 
-function createConversationElement(conv, isNewUser = false) {
+function updatLastMessageInCahtList(senderId, message) {
+    const chatLists = document.querySelectorAll(".chat-list-item");
+    chatLists.forEach(chatItem => {
+        if (chatItem.dataset.userId == senderId) {
+            chatItem.children[1].children[1].textContent = message
+        }
+    })
+}
+
+function createConversationElement(conv, isNewUser = false, isMessagePage) {
     const div = document.createElement('div');
     div.className = 'chat-list-item';
     div.dataset.userId = conv.user_id;
@@ -118,8 +128,9 @@ function createConversationElement(conv, isNewUser = false) {
     const statusClass = conv.is_online ? 'online' : 'offline';
     const lastMessage = isNewUser ? '' : `
         <div class="last-message">
-            ${conv.last_message || 'No messages yet'}
+            ${conv.last_message}
         </div>
+        <span class="typing-indicator" id="typingIndicator"}></span>
         ${conv.unread_count ? `<span class="unread-count">${conv.unread_count}</span>` : ''}
     `;
 
@@ -131,13 +142,25 @@ function createConversationElement(conv, isNewUser = false) {
         </div>
     `;
 
-    div.addEventListener('click', () => loadChat(conv.user_id));
+    // div.addEventListener('click', () => loadChat(conv.user_id));
+    if (isMessagePage) {
+        div.addEventListener('click', () => loadChat(conv.user_id));
+        // cleanups.push(() => removeEventListener('click', () => ""))
+    } else {
+        // initializeWebSocketListeners();
+        div.addEventListener('click', () => {
+            sessionStorage.setItem('lastActiveChat', conv.user_id);
+            window.dispatchEvent(new CustomEvent('navigate', {
+                detail: { path: '/messages' }
+            }));
+        });
+    }
     return div;
 }
 
 async function loadChat(userId) {
     try {
-        console.log(`Loading chat with user ID: ${userId}`);
+        // console.log(`Loading chat with user ID: ${userId}`);
         processedMessages.clear();
 
         currentChatId = userId;
@@ -155,17 +178,16 @@ async function loadChat(userId) {
         // Update header
         const userElement = document.querySelector(`.chat-list-item[data-user-id="${userId}"]`);
         const username = userElement.querySelector('.username').textContent;
-        
+
         chatHeader.innerHTML = `
         <div class="chat-header-info">
             <span class="username">${username}</span>
-            <span class="typing-indicator" id="typingIndicator"></span>
         </div>
     `;
 
         // Load initial messages
         await loadMessages();
-        
+
         // Mark messages as read
         await markMessagesAsRead(userId);
 
@@ -249,10 +271,10 @@ async function markMessagesAsRead(senderId) {
             },
             body: JSON.stringify({ sender_id: senderId })
         });
-        
+
         if (response.ok) {
             console.log("Messages marked as read successfully");
-            
+
             // Update the unread badge in conversation list
             const userElement = document.querySelector(`.chat-list-item[data-user-id="${senderId}"]`);
             if (userElement) {
@@ -261,7 +283,7 @@ async function markMessagesAsRead(senderId) {
                     unreadBadge.remove();
                 }
             }
-            
+
             // Update the header notification badge
             if (typeof window.updateUnreadBadge === 'function') {
                 window.updateUnreadBadge();
@@ -277,11 +299,12 @@ async function markMessagesAsRead(senderId) {
     }
 }
 
-function initializeWebSocketListeners() {
+export function initializeWebSocketListeners() {
     const messageCleanup = WebSocketService.onMessage(message => {
-        console.log("WebSocket message received:", message);
-        
+        // console.log("WebSocket message received:", message);
+
         const messageId = `${message.id}-${message.sender_id}-${message.receiver_id}`;
+        // console.log(currentChatId, currentUserID);
 
         // Skip if we've already processed this message
         if (processedMessages.has(messageId)) {
@@ -289,54 +312,64 @@ function initializeWebSocketListeners() {
         }
 
         processedMessages.add(messageId);
-
-        if (currentChatId !== null &&
-            (message.sender_id === currentChatId || message.receiver_id === currentChatId)) {
-            renderMessages([message], currentUserID);
-            console.log("Rendered new message in current chat");
-            
-            // If the current chat is open and we're the receiver, mark as read
-            if (message.receiver_id === currentUserID && message.sender_id === currentChatId) {
-                markMessagesAsRead(currentChatId);
+        console.log(currentChatId, message.sender_id, message.receiver_id, currentUserID);
+        if (window.location.pathname == "/messages") {
+            if (currentChatId !== null &&
+                (message.sender_id === currentChatId || message.receiver_id === currentChatId)) {
+                renderMessages([message], currentUserID);
+                // console.log("Rendered new message in current chat");
+    
+                // If the current chat is open and we're the receiver, mark as read
+                if (message.receiver_id === currentUserID && message.sender_id === currentChatId) {
+                    markMessagesAsRead(currentChatId);
+                }
+                updatLastMessageInCahtList(message.sender_id, message.content)
+            } else if (message.receiver_id === currentUserID) {
+                // If the message is for the current user but not in current chat, update conversation list
+                // console.log("Message for current user but not in current chat");
+                /*if (window.location.pathname == "/messages")*/ updateConversationList(true)
+                // else updateConversationList(false)
             }
-        } else if (message.receiver_id === currentUserID) {
-            // If the message is for the current user but not in current chat, update conversation list
-            console.log("Message for current user but not in current chat");
-            updateConversationList();
-        }
+        } else loadConversations(false)
     });
 
-    const statusCleanup = WebSocketService.onStatusChange(({ user_id, is_online }) => {
-        const userElement = document.querySelector(`.chat-list-item[data-user-id="${user_id}"]`);
-        if (userElement) {
-            const statusDot = userElement.querySelector('.user-status');
-            statusDot.className = `user-status ${is_online ? 'online' : 'offline'}`;
-        }
-    });
+    const statusCleanup = WebSocketService.onStatusChange(({ user_id, is_online }) => handleStatusChange(user_id, is_online));
 
-    const typingCleanup = WebSocketService.onTypingStatus(({ user_id, is_typing }) => {
-        if (user_id === currentChatId) {
-            const typingIndicator = document.getElementById('typingIndicator');
-            if (typingIndicator) {
-                if (is_typing) {
-                    typingIndicator.innerHTML = `
+
+
+    const typingCleanup = WebSocketService.onTypingStatus(({ user_id, is_typing }) => handleTyping(user_id, is_typing));
+
+    // messageCleanupFunctions.push(messageCleanup, statusCleanup, typingCleanup);
+}
+
+export function handleStatusChange(user_id, is_online) {
+    const userElement = document.querySelector(`.chat-list-item[data-user-id="${user_id}"]`);
+    if (userElement) {
+        const statusDot = userElement.querySelector('.user-status');
+        statusDot.className = `user-status ${is_online ? 'online' : 'offline'}`;
+    }
+}
+
+export function handleTyping(user_id, is_typing) {
+    // if (user_id === currentChatId) {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            if (is_typing) {
+                typingIndicator.innerHTML = `
                     <span class="typing-dots">
                         typing<span>.</span><span>.</span><span>.</span>
                     </span>`;
-                } else {
-                    typingIndicator.textContent = '';
-                }
+            } else {
+                typingIndicator.textContent = '';
             }
         }
-    });
-
-    messageCleanupFunctions.push(messageCleanup, statusCleanup, typingCleanup);
+    // }
 }
 
 function initializeMessageInput() {
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
-    
+
     if (!messageInput || !sendButton) {
         console.warn("Message input elements not found");
         return;
@@ -382,7 +415,7 @@ function initializeMessageInput() {
 
 function initializeScrollListener() {
     const chatMessages = document.getElementById('chatMessages');
-    
+
     if (!chatMessages) {
         console.warn("Chat messages element not found");
         return;
@@ -414,6 +447,6 @@ const throttle = (func, limit) => {
     };
 };
 
-async function updateConversationList() {
-    await loadConversations();
+async function updateConversationList(isMessagePage) {
+    await loadConversations(isMessagePage);
 }

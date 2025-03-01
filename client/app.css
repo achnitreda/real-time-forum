@@ -5,11 +5,33 @@
 }
 
 body {
+  /* position: relative; */
   font-family: "Helvetica Neue", Arial, sans-serif;
   background-color: #212121;
   color: #af9292;
-  width: 70%;
-  margin: auto;
+}
+.main {
+  display: flex;
+  width: 100%;
+  /* left: 20%; */
+  /* width: 80%; */
+}
+
+#app {
+  width: 78%;
+}
+
+#header {
+  background-color: #262626;
+  position: sticky;
+  top: 0;
+  grid-area: header;
+}
+
+#chatListPages {
+  /* position: absolute; */
+  /* left: 0; */
+  width: 20%;
 }
 
 .head {
@@ -159,10 +181,18 @@ body {
 
 .main-content {
   width: 100%;
-  padding: 40px;
+  /* padding: 40px; */
   transition: margin-left 0.3s ease;
-  border-radius: 10px;
 }
+
+/* #chatListPages {
+} */
+
+/* .filter {
+  position: sticky;
+  top: 83px;
+
+} */
 
 .profilInfo {
   display: flex;
@@ -210,6 +240,8 @@ body {
 }
 
 .Posts {
+  box-sizing: border-box;
+  /* margin: 5px; */
   display: grid;
   gap: 8px;
 }
@@ -527,6 +559,15 @@ p {
     padding: 10px;
   }
 
+  #chatListPages {
+    display: none;
+  }
+
+  #app {
+    width: 96%;
+    margin-left: 2%;
+  }
+
   .filter {
     padding: 10px;
   }
@@ -552,6 +593,7 @@ p {
 
 .messages-container {
   display: flex;
+  margin-left: -20%;
   height: calc(100vh - 100px);
   background-color: #2f2f2f;
   border-radius: 10px;
@@ -617,8 +659,8 @@ p {
   color: #9e9e9e;
   font-size: 0.9em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: hidden !important;
+  /* text-overflow: ellipsis; */
 }
 
 .unread-count {
@@ -822,6 +864,10 @@ p {
 @media (max-width: 768px) {
   .messages-container {
     flex-direction: column;
+  }
+
+  .messages-container {
+    margin-left: 0;
   }
 
   .chat-sidebar {

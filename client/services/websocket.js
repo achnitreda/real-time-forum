@@ -245,4 +245,4 @@ export const performLogout = (setStorage = true) => {
 }
 
 // Initialize immediately
-WebSocketService.init();
+// WebSocketService.init();

@@ -1,3 +1,5 @@
+import { renderChatList } from "../components/chatlist.js";
+
 let currentOffset = 0;
 let isLoading = false;
 let hasMorePosts = true;
@@ -21,7 +23,7 @@ export async function loadHomePage(container) {
                 </main>
             </div>
         `;
-
+        // renderChatList(app)
         // 2 Initialize the home page
         await initializeHome();
 

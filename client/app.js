@@ -1,3 +1,5 @@
+// import { renderChatList } from './components/chatlist.js';
+// import { renderChatList } from './components/chatlist.js';
 import { setupLogoutSync, WebSocketService } from './services/websocket.js';
 
 let currentCleanupFunction = null;
@@ -43,7 +45,7 @@ async function cleanupCurrentPage() {
     }
 }
 
-async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
+async function handlePageLoad(app, loadPage, shouldShowHeader = true, showChatList) {
     try {
         // Clean up previous page, normal navigation
         await cleanupCurrentPage();
@@ -52,8 +54,14 @@ async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
         app.innerHTML = '';
 
         const header = document.getElementById('header');
+        const chatList = document.getElementById('chatListPages');
+        
         if (header) {
             header.innerHTML = '';
+        }
+
+        if (chatList) {
+            chatList.innerHTML = '';
         }
 
         // Show header if needed
@@ -62,9 +70,13 @@ async function handlePageLoad(app, loadPage, shouldShowHeader = true) {
             await renderHeader();
         }
 
+        if (showChatList) {
+            const { renderChatList } = await import("./components/chatlist.js");
+            await renderChatList()
+        }
+
         // Load new page
         const result = await loadPage(app);
-
         // Store cleanup function if provided
         if (typeof result === 'function') {
             currentCleanupFunction = result;
@@ -99,7 +111,7 @@ async function router() {
             case '/':
             case '/home':
                 const { loadHomePage } = await import("./pages/Home.js");
-                await handlePageLoad(app, loadHomePage, true);
+                await handlePageLoad(app, loadHomePage, true, true);
                 break;
             case '/login':
                 const { loadLoginPage } = await import("./pages/Login.js");
@@ -111,11 +123,11 @@ async function router() {
                 break;
             case '/posting':
                 const { loadPostingPage } = await import("./pages/Posting.js");
-                await handlePageLoad(app, loadPostingPage, true);
+                await handlePageLoad(app, loadPostingPage, true, true);
                 break;
             case '/comment':
                 const { loadCommentPage } = await import("./pages/Comment.js");
-                await handlePageLoad(app, loadCommentPage, true);
+                await handlePageLoad(app, loadCommentPage, true, true);
                 break;
             case '/messages':
                 const { loadMessagesPage } = await import("./pages/Messages.js");
@@ -157,8 +169,14 @@ window.addEventListener('beforeunload', () => {
 const eventListeners = {
     init() {
         // Handle initial page load
-        document.addEventListener('DOMContentLoaded', router);
-
+        document.addEventListener('DOMContentLoaded', async () => {
+            // import { initializeWebSocketListeners } from './pages/Messages.js';
+            const { initializeWebSocketListeners } = await import('./pages/Messages.js')
+            // const { renderChatList } = await import('./components/chatlist.js')
+            // await renderChatList(document.body);
+            router()
+            initializeWebSocketListeners()
+        });
         // Handle browser back/forward buttons, browser history navigation
         window.addEventListener('popstate', () => {
             cleanupCurrentPage().then(() => router());

@@ -79,8 +79,8 @@ function setupNotificationListener() {
     if (window.WebSocketService) {
         console.log("Setting up notification listener in header");
 
-        window.WebSocketService.onMessage(message => {
-            console.log("Message received in header, updating badge");
+        window.WebSocketService.onMessage(() => {
+            // console.log("Message received in header, updating badge");
             updateUnreadBadge();
         });
     } else {
