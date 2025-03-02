@@ -754,9 +754,11 @@ p {
 }
 
 .message-content {
+  max-width: 200px;
   padding: 20px;
   border-radius: 15px;
   position: relative;
+  word-break: break-all;
 }
 
 .message.sent .message-content {

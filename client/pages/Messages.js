@@ -1,3 +1,5 @@
+import { sanitizeInput } from "../services/utils.js";
+
 const WebSocketService = window.WebSocketService;
 
 let messageCleanupFunctions = [];
@@ -63,13 +65,6 @@ export async function loadMessagesPage(container) {
     }
 }
 
-function cleanupMessageListeners() {
-    // messageCleanupFunctions.forEach(cleanup => cleanup());
-    // messageCleanupFunctions = [];
-    // WebSocketService.disconnect();
-    // processedMessages.clear();
-}
-
 export async function loadConversations(isMessagePage) {
     try {
         const response = await fetch('/api/messages');
@@ -88,9 +83,14 @@ function renderConversations(conversations, newUsers, isMessagePage) {
 
     const chatList = document.getElementById(isMessagePage ? "chatList" : "chatListPages");
     chatList.innerHTML = '';
+    const separator1 = document.createElement('div');
+    separator1.textContent = 'Chat List';
+    separator1.className = 'chat-list-separator';
+    chatList.appendChild(separator1);
 
     // Render active conversations
-    if (conversations) {
+    if (conversations) { 
+
         conversations.forEach(conv => {
             const conversationElement = createConversationElement(conv, false, isMessagePage);
             chatList.appendChild(conversationElement);
@@ -100,6 +100,8 @@ function renderConversations(conversations, newUsers, isMessagePage) {
     // Add separator if there are new users
     if (newUsers?.length > 0) {
         const separator = document.createElement('div');
+
+
         separator.className = 'chat-list-separator';
         separator.textContent = 'New Contacts';
         chatList.appendChild(separator);
@@ -127,7 +129,7 @@ function createConversationElement(conv, isNewUser = false, isMessagePage) {
     div.dataset.userId = conv.user_id;
 
     const statusClass = conv.is_online ? 'online' : 'offline';
-    const lastMessage = isNewUser ? '' : `
+    const lastMessage = isNewUser ? '<span class="typing-indicator" id="typingIndicator"}></span>' : `
         <div class="last-message">
             ${conv.last_message}
         </div>
@@ -221,13 +223,13 @@ async function loadMessages(append = false) {
     }
 }
 
-function renderMessages(messages, currentUserID, append = false, addMsgFromClient = false) {
+function renderMessages(messages, currentUserID, append = false) {
     const chatMessages = document.getElementById('chatMessages');
     // to prevent Browser from repaint itself each time we create a msg
     const fragment = document.createDocumentFragment();
 
     messages.forEach(msg => {
-        const msgEle = createMessageElement(msg, currentUserID, addMsgFromClient);
+        const msgEle = createMessageElement(msg, currentUserID, );
         fragment.appendChild(msgEle);
     });
 
@@ -241,17 +243,16 @@ function renderMessages(messages, currentUserID, append = false, addMsgFromClien
     }
 }
 
-function createMessageElement(message, currentUserID, addMsgFromClient) {
+function createMessageElement(message, currentUserID) {
     const div = document.createElement('div');
-    console.log(addMsgFromClient);
     
     let isSender = message.sender_id === currentUserID // Compare with current user's ID
-    if (addMsgFromClient) isSender = true  
+    // if (addMsgFromClient) isSender = true  
     div.className = `message ${isSender ? 'sent' : 'received'}`;
 
-    const date = addMsgFromClient ? new Date() : new Date(message.sent_at);
+    // const date = addMsgFromClient ? new Date() : new Date(message.sent_at);
 
-    const timestamp = date.toLocaleTimeString([], {
+    const timestamp = new Date(message.sent_at).toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -259,7 +260,7 @@ function createMessageElement(message, currentUserID, addMsgFromClient) {
     div.innerHTML = `
         <div class="message-content">
             <div style="font-weight: bold">${message.sender_name}:</div>
-            ${message.content}
+            <span>${message.content}</span>
             <span class="message-time">${timestamp}</span>
         </div>
     `;
@@ -384,13 +385,12 @@ function initializeMessageInput() {
     const sendMessage = () => {
         const content = messageInput.value.trim();
         if (!content || pendingMsg) return;
-        
         pendingMsg = true;
 
-        if (WebSocketService.sendMessage(currentChatId, content)) {
-            renderMessages([{content: content, sender_name:user.login}], user.id, false, true)
+        if (WebSocketService.sendMessage(currentChatId, sanitizeInput(content))) {
             messageInput.value = '';
         }
+
         setTimeout(() => {
             pendingMsg = false
         }, 1000)
@@ -400,7 +400,7 @@ function initializeMessageInput() {
 
     const inputHandler = () => {
         if (typingTimeout) {
-            clearTimeout(typingTimeout);
+            clearTimeout(typingTimeout);    
         }
         WebSocketService.updateTypingStatus(currentChatId, true);
         typingTimeout = setTimeout(() => {

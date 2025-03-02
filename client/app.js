@@ -96,12 +96,6 @@ async function router() {
 
     try {
         const data = await checkAuthStatus();
-        window.user = {
-            login: data.userName,
-            id: data.userId
-        };
-        console.log(user);
-         // use it i rendring msg from client side
         const authRoutes = ['/login', '/register'];
 
         // Handle auth redirects
