@@ -61,15 +61,12 @@ func CheckAuthStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	userID, isAuthenticated := handlers.CheckIfCookieValid(w, r)
-	userName := data.GetUserName(userID)
 	response := struct {
 		IsLoggedIn bool   `json:"isLoggedIn"`
 		UserID     int    `json:"userId,omitempty"`
-		UserName   string `json:"userName"`
 	}{
 		IsLoggedIn: isAuthenticated,
 		UserID:     userID,
-		UserName: userName,
 	}
 
 	json.NewEncoder(w).Encode(response)
