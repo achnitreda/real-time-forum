@@ -9,6 +9,7 @@ let typingTimeout = null;
 let lastScrollPosition = 0
 let currentUserID = null;
 let processedMessages = new Set();
+let pendingMsg = false;
 
 export async function loadMessagesPage(container) {
     try {
@@ -382,12 +383,17 @@ function initializeMessageInput() {
 
     const sendMessage = () => {
         const content = messageInput.value.trim();
-        if (!content) return;
+        if (!content || pendingMsg) return;
+        
+        pendingMsg = true;
 
         if (WebSocketService.sendMessage(currentChatId, content)) {
             renderMessages([{content: content, sender_name:user.login}], user.id, false, true)
             messageInput.value = '';
         }
+        setTimeout(() => {
+            pendingMsg = false
+        }, 1000)
     };
 
     sendButton.addEventListener('click', sendMessage);
