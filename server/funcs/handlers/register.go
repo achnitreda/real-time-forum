@@ -15,7 +15,7 @@ import (
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -62,7 +62,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert user into database
-	err = data.InsertUserInfo(
+	userId, err := data.InsertUserInfo(
 		email,
 		string(hashedPassword),
 		uname,
@@ -93,6 +93,17 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	newUserNotification := WebSocketMessage{
+		Type: "new_user",
+		Payload: map[string]interface{}{
+			"user_id":   userId, // normaly I didn't work with it the payload because I loadConversations and I don't simply add it
+			"username":  userData.Username,
+			"is_online": true,
+		},
+	}
+
+	wsManager.broadcastToAll(newUserNotification, userId)
 
 	json.NewEncoder(w).Encode(map[string]string{
 		"status":  "success",

@@ -2,13 +2,14 @@ package forum
 
 import (
 	"encoding/json"
-	data "forum/funcs/database"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	data "forum/funcs/database"
 )
 
 type PostingData struct {

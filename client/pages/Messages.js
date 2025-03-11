@@ -2,7 +2,7 @@ import { sanitizeInput } from "../services/utils.js";
 
 const WebSocketService = window.WebSocketService;
 
-let messageCleanupFunctions = [];
+// let messageCleanupFunctions = [];
 let currentOffset = 0;
 let currentChatId = null;
 let hasMoreMessages = true;
@@ -61,7 +61,7 @@ export async function loadMessagesPage(container) {
         console.error('Error loading messages page:', error);
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
     } finally {
-        return () => cleanupMessageListeners();
+        // return () => cleanupMessageListeners();
     }
 }
 
@@ -89,7 +89,7 @@ function renderConversations(conversations, newUsers, isMessagePage) {
     chatList.appendChild(separator1);
 
     // Render active conversations
-    if (conversations) { 
+    if (conversations) {
 
         conversations.forEach(conv => {
             const conversationElement = createConversationElement(conv, false, isMessagePage);
@@ -129,13 +129,14 @@ function createConversationElement(conv, isNewUser = false, isMessagePage) {
     div.dataset.userId = conv.user_id;
 
     const statusClass = conv.is_online ? 'online' : 'offline';
-    const lastMessage = isNewUser ? '<span class="typing-indicator" id="typingIndicator"}></span>' : `
-        <div class="last-message">
-            ${conv.last_message}
-        </div>
-        <span class="typing-indicator" id="typingIndicator"}></span>
-        ${conv.unread_count ? `<span class="unread-count">${conv.unread_count}</span>` : ''}
-    `;
+    const lastMessage = isNewUser ?
+        `<span class="typing-indicator" id="typing-indicator-${conv.user_id}"></span>` :
+        `<div class="last-message">
+        ${conv.last_message.length > 20 ? conv.last_message.substring(0,20)+"..." : conv.last_message}
+    </div>
+    <span class="typing-indicator" id="typing-indicator-${conv.user_id}"></span>
+    ${conv.unread_count ? `<span class="unread-count">${conv.unread_count}</span>` : ''}
+`;
 
     div.innerHTML = `
         <div class="user-status ${statusClass}"></div>
@@ -229,7 +230,7 @@ function renderMessages(messages, currentUserID, append = false) {
     const fragment = document.createDocumentFragment();
 
     messages.forEach(msg => {
-        const msgEle = createMessageElement(msg, currentUserID, );
+        const msgEle = createMessageElement(msg, currentUserID,);
         fragment.appendChild(msgEle);
     });
 
@@ -245,7 +246,7 @@ function renderMessages(messages, currentUserID, append = false) {
 
 function createMessageElement(message, currentUserID) {
     const div = document.createElement('div');
-    
+
     let isSender = message.sender_id === currentUserID // Compare with current user's ID
     // if (addMsgFromClient) isSender = true  
     div.className = `message ${isSender ? 'sent' : 'received'}`;
@@ -325,7 +326,7 @@ export function initializeWebSocketListeners() {
                 (message.sender_id === currentChatId || message.receiver_id === currentChatId)) {
                 renderMessages([message], currentUserID);
                 // console.log("Rendered new message in current chat");
-    
+
                 // If the current chat is open and we're the receiver, mark as read
                 if (message.receiver_id === currentUserID && message.sender_id === currentChatId) {
                     markMessagesAsRead(currentChatId);
@@ -342,11 +343,13 @@ export function initializeWebSocketListeners() {
 
     const statusCleanup = WebSocketService.onStatusChange(({ user_id, is_online }) => handleStatusChange(user_id, is_online));
 
-
+    const newUserCleanup = WebSocketService.onNewUser(() => {
+        updateConversationList(window.location.pathname === "/messages");
+    });
 
     const typingCleanup = WebSocketService.onTypingStatus(({ user_id, is_typing }) => handleTyping(user_id, is_typing));
 
-    // messageCleanupFunctions.push(messageCleanup, statusCleanup, typingCleanup);
+    // messageCleanupFunctions.push(messageCleanup, statusCleanup, typingCleanup,);
 }
 
 export function handleStatusChange(user_id, is_online) {
@@ -358,19 +361,18 @@ export function handleStatusChange(user_id, is_online) {
 }
 
 export function handleTyping(user_id, is_typing) {
-    // if (user_id === currentChatId) {
-        const typingIndicator = document.getElementById('typingIndicator');
-        if (typingIndicator) {
-            if (is_typing) {
-                typingIndicator.innerHTML = `
-                    <span class="typing-dots">
-                        typing<span>.</span><span>.</span><span>.</span>
-                    </span>`;
-            } else {
-                typingIndicator.textContent = '';
-            }
+    const typingIndicator = document.getElementById(`typing-indicator-${user_id}`);
+    
+    if (typingIndicator) {
+        if (is_typing) {
+            typingIndicator.innerHTML = `
+                <span class="typing-dots">
+                    typing<span>.</span><span>.</span><span>.</span>
+                </span>`;
+        } else {
+            typingIndicator.innerHTML = '';
         }
-    // }
+    }
 }
 
 function initializeMessageInput() {
@@ -384,7 +386,7 @@ function initializeMessageInput() {
 
     const sendMessage = () => {
         const content = messageInput.value.trim();
-        if (!content || pendingMsg) return;
+        if (!content || pendingMsg || content.length > 1000) return;
         pendingMsg = true;
 
         if (WebSocketService.sendMessage(currentChatId, sanitizeInput(content))) {
@@ -400,7 +402,7 @@ function initializeMessageInput() {
 
     const inputHandler = () => {
         if (typingTimeout) {
-            clearTimeout(typingTimeout);    
+            clearTimeout(typingTimeout);
         }
         WebSocketService.updateTypingStatus(currentChatId, true);
         typingTimeout = setTimeout(() => {
@@ -418,11 +420,11 @@ function initializeMessageInput() {
     messageInput.addEventListener('input', throttle(inputHandler, 300));
     messageInput.addEventListener('keypress', keypressHandler);
 
-    messageCleanupFunctions.push(
-        () => sendButton.removeEventListener('click', sendMessage),
-        () => messageInput.removeEventListener('input', inputHandler),
-        () => messageInput.removeEventListener('keypress', keypressHandler)
-    );
+    // messageCleanupFunctions.push(
+    //     () => sendButton.removeEventListener('click', sendMessage),
+    //     () => messageInput.removeEventListener('input', inputHandler),
+    //     () => messageInput.removeEventListener('keypress', keypressHandler)
+    // );
 }
 
 function initializeScrollListener() {
@@ -443,9 +445,9 @@ function initializeScrollListener() {
     };
 
     chatMessages.addEventListener('scroll', throttle(scrollHandler, 200));
-    messageCleanupFunctions.push(
-        () => chatMessages.removeEventListener('scroll', scrollHandler)
-    );
+    // messageCleanupFunctions.push(
+    //     () => chatMessages.removeEventListener('scroll', scrollHandler)
+    // );
 }
 
 const throttle = (func, limit) => {

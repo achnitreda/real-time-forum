@@ -6,6 +6,7 @@ const RECONNECT_DELAY = 3000;
 const messageCallbacks = new Set();
 const statusCallbacks = new Set();
 const typingCallbacks = new Set();
+const newUserCallbacks = new Set();
 
 export const WebSocketService = {
     isInitialized: false,
@@ -80,6 +81,9 @@ export const WebSocketService = {
                             break;
                         case 'typing_status':
                             typingCallbacks.forEach(callback => callback(data.payload));
+                            break;
+                        case 'new_user':
+                            newUserCallbacks.forEach(callback => callback(data.payload));
                             break;
                     }
                 } catch (error) {
@@ -192,6 +196,11 @@ export const WebSocketService = {
     onTypingStatus(callback) {
         typingCallbacks.add(callback);
         return () => typingCallbacks.delete(callback);
+    },
+
+    onNewUser(callback) {
+        newUserCallbacks.add(callback);
+        return () => newUserCallbacks.delete(callback);
     },
 
     notifyStatusCallbacks(isOnline) {
